@@ -1,154 +1,154 @@
-{'UNSW_train_fit': 79147, 'UNSW_train_fit_DR': 47776, 'UNSW_test_dev': 25283, 'UNSW_test_final': 25284, 'UNSW_test_final_DR': 17987, '5G_toan_bo': 379556, 'BS1_fit': 166411, 'BS1_val': 41603, 'BS2': 171542}
+{'UNSW_train_fit': 79147, 'UNSW_train_fit_DR': 47776, 'UNSW_test_dev': 25283, 'UNSW_test_final': 25284, 'UNSW_test_final_DR': 17987, '5G_total': 379556, 'BS1_fit': 166411, 'BS1_val': 41603, 'BS2': 171542}
 P1 — zero-shot UNSW → 5G
-    fit   117s | 79,147 dòng | 31 feature
-    fit    41s | 79,147 dòng | 12 feature
-    fit    39s | 79,147 dòng | 18 feature
-    fit    18s | 47,776 dòng | 31 feature
-    fit    10s | 47,776 dòng | 12 feature
-    fit    14s | 47,776 dòng | 18 feature
+    fit   117s | 79,147 rows | 31 feature
+    fit    41s | 79,147 rows | 12 feature
+    fit    39s | 79,147 rows | 18 feature
+    fit    18s | 47,776 rows | 31 feature
+    fit    10s | 47,776 rows | 12 feature
+    fit    14s | 47,776 rows | 18 feature
 P2 — 5G-BS1 → UNSW
-    fit    25s | 166,411 dòng | 31 feature
-    fit    19s | 166,411 dòng | 12 feature
-    fit    27s | 166,411 dòng | 18 feature
+    fit    25s | 166,411 rows | 31 feature
+    fit    19s | 166,411 rows | 12 feature
+    fit    27s | 166,411 rows | 18 feature
 P5 — BS1 → BS2
-    fit    24s | 166,411 dòng | 31 feature
-    fit    19s | 166,411 dòng | 12 feature
-    fit    27s | 166,411 dòng | 18 feature
-P3 — gộp UNSW + BS1
-    fit   201s | 245,558 dòng | 31 feature
-    fit   115s | 245,558 dòng | 12 feature
-    fit   160s | 245,558 dòng | 18 feature
-    fit    98s | 214,187 dòng | 31 feature
-    fit    71s | 214,187 dòng | 12 feature
-    fit    98s | 214,187 dòng | 18 feature
+    fit    24s | 166,411 rows | 31 feature
+    fit    19s | 166,411 rows | 12 feature
+    fit    27s | 166,411 rows | 18 feature
+P3 — pooled UNSW + BS1
+    fit   201s | 245,558 rows | 31 feature
+    fit   115s | 245,558 rows | 12 feature
+    fit   160s | 245,558 rows | 18 feature
+    fit    98s | 214,187 rows | 31 feature
+    fit    71s | 214,187 rows | 12 feature
+    fit    98s | 214,187 rows | 18 feature
 P4 — few-shot
-    fit     0s | 168 dòng | 18 feature
-    fit    14s | 47,944 dòng | 18 feature
-    fit     0s | 168 dòng | 18 feature
-    fit    14s | 47,944 dòng | 18 feature
-    fit     0s | 168 dòng | 18 feature
-    fit    14s | 47,944 dòng | 18 feature
-    fit     0s | 1,664 dòng | 18 feature
-    fit    15s | 49,440 dòng | 18 feature
-    fit     0s | 1,664 dòng | 18 feature
-    fit    15s | 49,440 dòng | 18 feature
-    fit     0s | 1,664 dòng | 18 feature
-    fit    15s | 49,440 dòng | 18 feature
-    fit     1s | 8,322 dòng | 18 feature
-    fit    19s | 56,098 dòng | 18 feature
-    fit     1s | 8,322 dòng | 18 feature
-    fit    19s | 56,098 dòng | 18 feature
-    fit     1s | 8,322 dòng | 18 feature
-    fit    19s | 56,098 dòng | 18 feature
-    fit     2s | 33,283 dòng | 18 feature
-    fit    29s | 81,059 dòng | 18 feature
-    fit     2s | 33,283 dòng | 18 feature
-    fit    30s | 81,059 dòng | 18 feature
-    fit     2s | 33,283 dòng | 18 feature
-    fit    29s | 81,059 dòng | 18 feature
-   giao_thuc           phuong_an feature can_nhan            tap_dich    kieu_nguong  roc_auc  pr_auc      pi  balanced_acc     mcc  recall     fpr
-0         P1   zero-shot UNSW→5G     F31      ALL          5G toàn bộ           @0,5   0.3990  0.7473  0.8333        0.4461 -0.0804  0.5032  0.6110
-1         P1   zero-shot UNSW→5G     F31      ALL          5G toàn bộ  @nguong_nguon   0.3990  0.7473  0.8333        0.3567 -0.2859  0.1200  0.4067
-2         P1   zero-shot UNSW→5G     F31      ALL              5G BS2           @0,5   0.3537  0.7763  0.8658        0.4295 -0.0964  0.5169  0.6579
-3         P1   zero-shot UNSW→5G     F31      ALL              5G BS2  @nguong_nguon   0.3537  0.7763  0.8658        0.3325 -0.3058  0.1225  0.4575
-4         P1       mốc UNSW→UNSW     F31      ALL     UNSW test-final           @0,5   0.9594  0.9414  0.3665        0.8461  0.6672  0.9491  0.2569
-5         P1       mốc UNSW→UNSW     F31      ALL     UNSW test-final  @nguong_nguon   0.9594  0.9414  0.3665        0.8779  0.7495  0.8607  0.1050
-6         P1   zero-shot UNSW→5G   LOI12      ALL          5G toàn bộ           @0,5   0.2781  0.7315  0.8333        0.3051 -0.2955  0.3438  0.7335
-7         P1   zero-shot UNSW→5G   LOI12      ALL          5G toàn bộ  @nguong_nguon   0.2781  0.7315  0.8333        0.3711 -0.2339  0.1720  0.4298
-8         P1   zero-shot UNSW→5G   LOI12      ALL              5G BS2           @0,5   0.2772  0.7758  0.8658        0.3157 -0.2556  0.3591  0.7277
-9         P1   zero-shot UNSW→5G   LOI12      ALL              5G BS2  @nguong_nguon   0.2772  0.7758  0.8658        0.3565 -0.2369  0.1798  0.4669
-10        P1       mốc UNSW→UNSW   LOI12      ALL     UNSW test-final           @0,5   0.9566  0.9352  0.3665        0.8456  0.6663  0.9509  0.2598
-11        P1       mốc UNSW→UNSW   LOI12      ALL     UNSW test-final  @nguong_nguon   0.9566  0.9352  0.3665        0.8767  0.7480  0.8569  0.1035
-12        P1   zero-shot UNSW→5G   LOI18      ALL          5G toàn bộ           @0,5   0.3236  0.7391  0.8333        0.3591 -0.2223  0.2895  0.5713
-13        P1   zero-shot UNSW→5G   LOI18      ALL          5G toàn bộ  @nguong_nguon   0.3236  0.7391  0.8333        0.3670 -0.2589  0.1341  0.4001
-14        P1   zero-shot UNSW→5G   LOI18      ALL              5G BS2           @0,5   0.3092  0.7774  0.8658        0.3482 -0.2176  0.3042  0.6077
-15        P1   zero-shot UNSW→5G   LOI18      ALL              5G BS2  @nguong_nguon   0.3092  0.7774  0.8658        0.3519 -0.2643  0.1378  0.4341
-16        P1       mốc UNSW→UNSW   LOI18      ALL     UNSW test-final           @0,5   0.9569  0.9356  0.3665        0.8516  0.6778  0.9542  0.2510
-17        P1       mốc UNSW→UNSW   LOI18      ALL     UNSW test-final  @nguong_nguon   0.9569  0.9356  0.3665        0.8739  0.7431  0.8522  0.1043
-18        P1   zero-shot UNSW→5G     F31       DR          5G toàn bộ           @0,5   0.3092  0.7249  0.8333        0.2685 -0.4327  0.1213  0.5843
-19        P1   zero-shot UNSW→5G     F31       DR          5G toàn bộ  @nguong_nguon   0.3092  0.7249  0.8333        0.5144  0.1131  0.9957  0.9669
-20        P1   zero-shot UNSW→5G     F31       DR              5G BS2           @0,5   0.3239  0.7711  0.8658        0.2811 -0.3880  0.1217  0.5595
-21        P1   zero-shot UNSW→5G     F31       DR              5G BS2  @nguong_nguon   0.3239  0.7711  0.8658        0.5154  0.1135  0.9955  0.9646
-22        P1       mốc UNSW→UNSW     F31       DR  UNSW test-final DR           @0,5   0.9950  0.9758  0.1095        0.9657  0.9217  0.9416  0.0102
-23        P1       mốc UNSW→UNSW     F31       DR  UNSW test-final DR  @nguong_nguon   0.9950  0.9758  0.1095        0.9434  0.6968  0.9863  0.0995
-24        P1   zero-shot UNSW→5G   LOI12       DR          5G toàn bộ           @0,5   0.2062  0.7138  0.8333        0.2861 -0.3363  0.2700  0.6978
-25        P1   zero-shot UNSW→5G   LOI12       DR          5G toàn bộ  @nguong_nguon   0.2062  0.7138  0.8333        0.3740 -0.2138  0.6965  0.9485
-26        P1   zero-shot UNSW→5G   LOI12       DR              5G BS2           @0,5   0.2121  0.7592  0.8658        0.3127 -0.2711  0.2819  0.6565
-27        P1   zero-shot UNSW→5G   LOI12       DR              5G BS2  @nguong_nguon   0.2121  0.7592  0.8658        0.3809 -0.1832  0.6995  0.9378
-28        P1       mốc UNSW→UNSW   LOI12       DR  UNSW test-final DR           @0,5   0.9931  0.9560  0.1095        0.9555  0.8703  0.9330  0.0219
-29        P1       mốc UNSW→UNSW   LOI12       DR  UNSW test-final DR  @nguong_nguon   0.9931  0.9560  0.1095        0.9468  0.7099  0.9868  0.0932
-30        P1   zero-shot UNSW→5G   LOI18       DR          5G toàn bộ           @0,5   0.2772  0.7328  0.8333        0.3331 -0.2754  0.2300  0.5637
-31        P1   zero-shot UNSW→5G   LOI18       DR          5G toàn bộ  @nguong_nguon   0.2772  0.7328  0.8333        0.3648 -0.2293  0.6932  0.9636
-32        P1   zero-shot UNSW→5G   LOI18       DR              5G BS2           @0,5   0.2817  0.7771  0.8658        0.3437 -0.2370  0.2390  0.5515
-33        P1   zero-shot UNSW→5G   LOI18       DR              5G BS2  @nguong_nguon   0.2817  0.7771  0.8658        0.3704 -0.1998  0.6986  0.9578
-34        P1       mốc UNSW→UNSW   LOI18       DR  UNSW test-final DR           @0,5   0.9932  0.9570  0.1095        0.9527  0.8684  0.9269  0.0214
-35        P1       mốc UNSW→UNSW   LOI18       DR  UNSW test-final DR  @nguong_nguon   0.9932  0.9570  0.1095        0.9466  0.7099  0.9863  0.0930
-36        P2   ngược 5G-BS1→UNSW     F31      ALL     UNSW test-final           @0,5   0.4538  0.3664  0.3665        0.5004  0.0016  0.0631  0.0623
-37        P2   ngược 5G-BS1→UNSW     F31      ALL     UNSW test-final  @nguong_nguon   0.4538  0.3664  0.3665        0.4475 -0.1138  0.6620  0.7671
-38        P2   ngược 5G-BS1→UNSW     F31       DR  UNSW test-final DR           @0,5   0.5399  0.1354  0.1095        0.5087  0.0222  0.0797  0.0623
-39        P2   ngược 5G-BS1→UNSW     F31       DR  UNSW test-final DR  @nguong_nguon   0.5399  0.1354  0.1095        0.5002  0.0003  0.7675  0.7671
-40        P2   ngược 5G-BS1→UNSW   LOI12      ALL     UNSW test-final           @0,5   0.4832  0.3487  0.3665        0.4707 -0.1128  0.0299  0.0884
-41        P2   ngược 5G-BS1→UNSW   LOI12      ALL     UNSW test-final  @nguong_nguon   0.4832  0.3487  0.3665        0.5183  0.0376  0.3511  0.3145
-42        P2   ngược 5G-BS1→UNSW   LOI12       DR  UNSW test-final DR           @0,5   0.5442  0.1299  0.1095        0.4652 -0.0798  0.0188  0.0884
-43        P2   ngược 5G-BS1→UNSW   LOI12       DR  UNSW test-final DR  @nguong_nguon   0.5442  0.1299  0.1095        0.5877  0.1161  0.4898  0.3145
-44        P2   ngược 5G-BS1→UNSW   LOI18      ALL     UNSW test-final           @0,5   0.4771  0.3478  0.3665        0.4868 -0.0368  0.1213  0.1477
-45        P2   ngược 5G-BS1→UNSW   LOI18      ALL     UNSW test-final  @nguong_nguon   0.4771  0.3478  0.3665        0.5276  0.0561  0.3773  0.3220
-46        P2   ngược 5G-BS1→UNSW   LOI18       DR  UNSW test-final DR           @0,5   0.5490  0.1404  0.1095        0.5929  0.1552  0.3335  0.1477
-47        P2   ngược 5G-BS1→UNSW   LOI18       DR  UNSW test-final DR  @nguong_nguon   0.5490  0.1404  0.1095        0.6075  0.1413  0.5371  0.3220
-48        P5  trong miền BS1→BS2     F31        -              5G BS2           @0,5   0.9994  0.9999  0.8658        0.9814  0.9684  0.9969  0.0342
-49        P5  trong miền BS1→BS2     F31        -              5G BS2  @nguong_nguon   0.9994  0.9999  0.8658        0.9281  0.9152  1.0000  0.1437
-50        P5  trong miền BS1→BS2   LOI12        -              5G BS2           @0,5   0.9976  0.9994  0.8658        0.9720  0.9600  0.9977  0.0537
-51        P5  trong miền BS1→BS2   LOI12        -              5G BS2  @nguong_nguon   0.9976  0.9994  0.8658        0.9608  0.9519  0.9993  0.0776
-52        P5  trong miền BS1→BS2   LOI18        -              5G BS2           @0,5   0.9976  0.9994  0.8658        0.9712  0.9587  0.9976  0.0551
-53        P5  trong miền BS1→BS2   LOI18        -              5G BS2  @nguong_nguon   0.9976  0.9994  0.8658        0.9609  0.9534  0.9997  0.0779
-54        P3        gộp UNSW+BS1     F31      ALL              5G BS2           @0,5   0.9994  0.9999  0.8658        0.9823  0.9774  0.9994  0.0347
-55        P3        gộp UNSW+BS1     F31      ALL              5G BS2  @nguong_nguon   0.9994  0.9999  0.8658        0.9843  0.9728  0.9971  0.0285
-56        P3        gộp UNSW+BS1     F31      ALL     UNSW test-final           @0,5   0.9579  0.9392  0.3665        0.8421  0.6596  0.9467  0.2625
-57        P3        gộp UNSW+BS1     F31      ALL     UNSW test-final  @nguong_nguon   0.9579  0.9392  0.3665        0.8691  0.7194  0.8928  0.1547
-58        P3        gộp UNSW+BS1   LOI12      ALL              5G BS2           @0,5   0.9974  0.9994  0.8658        0.9673  0.9578  0.9988  0.0642
-59        P3        gộp UNSW+BS1   LOI12      ALL              5G BS2  @nguong_nguon   0.9974  0.9994  0.8658        0.9746  0.9626  0.9976  0.0484
-60        P3        gộp UNSW+BS1   LOI12      ALL     UNSW test-final           @0,5   0.9557  0.9340  0.3665        0.8512  0.6770  0.9508  0.2483
-61        P3        gộp UNSW+BS1   LOI12      ALL     UNSW test-final  @nguong_nguon   0.9557  0.9340  0.3665        0.8731  0.7352  0.8684  0.1222
-62        P3        gộp UNSW+BS1   LOI18      ALL              5G BS2           @0,5   0.9976  0.9994  0.8658        0.9674  0.9578  0.9987  0.0639
-63        P3        gộp UNSW+BS1   LOI18      ALL              5G BS2  @nguong_nguon   0.9976  0.9994  0.8658        0.9741  0.9620  0.9975  0.0494
-64        P3        gộp UNSW+BS1   LOI18      ALL     UNSW test-final           @0,5   0.9554  0.9332  0.3665        0.8470  0.6690  0.9497  0.2557
-65        P3        gộp UNSW+BS1   LOI18      ALL     UNSW test-final  @nguong_nguon   0.9554  0.9332  0.3665        0.8722  0.7338  0.8667  0.1222
-66        P3        gộp UNSW+BS1     F31       DR              5G BS2           @0,5   0.9995  0.9999  0.8658        0.9822  0.9748  0.9986  0.0341
-67        P3        gộp UNSW+BS1     F31       DR              5G BS2  @nguong_nguon   0.9995  0.9999  0.8658        0.9436  0.9337  1.0000  0.1127
-68        P3        gộp UNSW+BS1     F31       DR  UNSW test-final DR           @0,5   0.9946  0.9729  0.1095        0.9581  0.9165  0.9254  0.0091
-69        P3        gộp UNSW+BS1     F31       DR  UNSW test-final DR  @nguong_nguon   0.9946  0.9729  0.1095        0.9250  0.6274  0.9904  0.1404
-70        P3        gộp UNSW+BS1   LOI12       DR              5G BS2           @0,5   0.9974  0.9994  0.8658        0.9703  0.9587  0.9979  0.0574
-71        P3        gộp UNSW+BS1   LOI12       DR              5G BS2  @nguong_nguon   0.9974  0.9994  0.8658        0.9463  0.9369  1.0000  0.1073
-72        P3        gộp UNSW+BS1   LOI12       DR  UNSW test-final DR           @0,5   0.9930  0.9574  0.1095        0.9530  0.8705  0.9269  0.0209
-73        P3        gộp UNSW+BS1   LOI12       DR  UNSW test-final DR  @nguong_nguon   0.9930  0.9574  0.1095        0.9415  0.6849  0.9898  0.1068
-74        P3        gộp UNSW+BS1   LOI18       DR              5G BS2           @0,5   0.9974  0.9994  0.8658        0.9691  0.9567  0.9977  0.0595
-75        P3        gộp UNSW+BS1   LOI18       DR              5G BS2  @nguong_nguon   0.9974  0.9994  0.8658        0.9447  0.9350  1.0000  0.1106
-76        P3        gộp UNSW+BS1   LOI18       DR  UNSW test-final DR           @0,5   0.9929  0.9579  0.1095        0.9512  0.8680  0.9234  0.0209
-77        P3        gộp UNSW+BS1   LOI18       DR  UNSW test-final DR  @nguong_nguon   0.9929  0.9579  0.1095        0.9408  0.6833  0.9888  0.1073
-                                                                   n_nhan_5G      roc_auc          pr_auc         balanced_acc             mcc          recall             fpr        
+    fit     0s | 168 rows | 18 feature
+    fit    14s | 47,944 rows | 18 feature
+    fit     0s | 168 rows | 18 feature
+    fit    14s | 47,944 rows | 18 feature
+    fit     0s | 168 rows | 18 feature
+    fit    14s | 47,944 rows | 18 feature
+    fit     0s | 1,664 rows | 18 feature
+    fit    15s | 49,440 rows | 18 feature
+    fit     0s | 1,664 rows | 18 feature
+    fit    15s | 49,440 rows | 18 feature
+    fit     0s | 1,664 rows | 18 feature
+    fit    15s | 49,440 rows | 18 feature
+    fit     1s | 8,322 rows | 18 feature
+    fit    19s | 56,098 rows | 18 feature
+    fit     1s | 8,322 rows | 18 feature
+    fit    19s | 56,098 rows | 18 feature
+    fit     1s | 8,322 rows | 18 feature
+    fit    19s | 56,098 rows | 18 feature
+    fit     2s | 33,283 rows | 18 feature
+    fit    29s | 81,059 rows | 18 feature
+    fit     2s | 33,283 rows | 18 feature
+    fit    30s | 81,059 rows | 18 feature
+    fit     2s | 33,283 rows | 18 feature
+    fit    29s | 81,059 rows | 18 feature
+   protocol           scenario feature label_alignment            target_set    threshold_type  roc_auc  pr_auc      pi  balanced_acc     mcc  recall     fpr
+0         P1   zero-shot UNSW→5G     F31      ALL          5G full           @0.5   0.3990  0.7473  0.8333        0.4461 -0.0804  0.5032  0.6110
+1         P1   zero-shot UNSW→5G     F31      ALL          5G full  @source_threshold   0.3990  0.7473  0.8333        0.3567 -0.2859  0.1200  0.4067
+2         P1   zero-shot UNSW→5G     F31      ALL              5G BS2           @0.5   0.3537  0.7763  0.8658        0.4295 -0.0964  0.5169  0.6579
+3         P1   zero-shot UNSW→5G     F31      ALL              5G BS2  @source_threshold   0.3537  0.7763  0.8658        0.3325 -0.3058  0.1225  0.4575
+4         P1       baseline UNSW→UNSW     F31      ALL     UNSW test-final           @0.5   0.9594  0.9414  0.3665        0.8461  0.6672  0.9491  0.2569
+5         P1       baseline UNSW→UNSW     F31      ALL     UNSW test-final  @source_threshold   0.9594  0.9414  0.3665        0.8779  0.7495  0.8607  0.1050
+6         P1   zero-shot UNSW→5G   LOI12      ALL          5G full           @0.5   0.2781  0.7315  0.8333        0.3051 -0.2955  0.3438  0.7335
+7         P1   zero-shot UNSW→5G   LOI12      ALL          5G full  @source_threshold   0.2781  0.7315  0.8333        0.3711 -0.2339  0.1720  0.4298
+8         P1   zero-shot UNSW→5G   LOI12      ALL              5G BS2           @0.5   0.2772  0.7758  0.8658        0.3157 -0.2556  0.3591  0.7277
+9         P1   zero-shot UNSW→5G   LOI12      ALL              5G BS2  @source_threshold   0.2772  0.7758  0.8658        0.3565 -0.2369  0.1798  0.4669
+10        P1       baseline UNSW→UNSW   LOI12      ALL     UNSW test-final           @0.5   0.9566  0.9352  0.3665        0.8456  0.6663  0.9509  0.2598
+11        P1       baseline UNSW→UNSW   LOI12      ALL     UNSW test-final  @source_threshold   0.9566  0.9352  0.3665        0.8767  0.7480  0.8569  0.1035
+12        P1   zero-shot UNSW→5G   LOI18      ALL          5G full           @0.5   0.3236  0.7391  0.8333        0.3591 -0.2223  0.2895  0.5713
+13        P1   zero-shot UNSW→5G   LOI18      ALL          5G full  @source_threshold   0.3236  0.7391  0.8333        0.3670 -0.2589  0.1341  0.4001
+14        P1   zero-shot UNSW→5G   LOI18      ALL              5G BS2           @0.5   0.3092  0.7774  0.8658        0.3482 -0.2176  0.3042  0.6077
+15        P1   zero-shot UNSW→5G   LOI18      ALL              5G BS2  @source_threshold   0.3092  0.7774  0.8658        0.3519 -0.2643  0.1378  0.4341
+16        P1       baseline UNSW→UNSW   LOI18      ALL     UNSW test-final           @0.5   0.9569  0.9356  0.3665        0.8516  0.6778  0.9542  0.2510
+17        P1       baseline UNSW→UNSW   LOI18      ALL     UNSW test-final  @source_threshold   0.9569  0.9356  0.3665        0.8739  0.7431  0.8522  0.1043
+18        P1   zero-shot UNSW→5G     F31       DR          5G full           @0.5   0.3092  0.7249  0.8333        0.2685 -0.4327  0.1213  0.5843
+19        P1   zero-shot UNSW→5G     F31       DR          5G full  @source_threshold   0.3092  0.7249  0.8333        0.5144  0.1131  0.9957  0.9669
+20        P1   zero-shot UNSW→5G     F31       DR              5G BS2           @0.5   0.3239  0.7711  0.8658        0.2811 -0.3880  0.1217  0.5595
+21        P1   zero-shot UNSW→5G     F31       DR              5G BS2  @source_threshold   0.3239  0.7711  0.8658        0.5154  0.1135  0.9955  0.9646
+22        P1       baseline UNSW→UNSW     F31       DR  UNSW test-final DR           @0.5   0.9950  0.9758  0.1095        0.9657  0.9217  0.9416  0.0102
+23        P1       baseline UNSW→UNSW     F31       DR  UNSW test-final DR  @source_threshold   0.9950  0.9758  0.1095        0.9434  0.6968  0.9863  0.0995
+24        P1   zero-shot UNSW→5G   LOI12       DR          5G full           @0.5   0.2062  0.7138  0.8333        0.2861 -0.3363  0.2700  0.6978
+25        P1   zero-shot UNSW→5G   LOI12       DR          5G full  @source_threshold   0.2062  0.7138  0.8333        0.3740 -0.2138  0.6965  0.9485
+26        P1   zero-shot UNSW→5G   LOI12       DR              5G BS2           @0.5   0.2121  0.7592  0.8658        0.3127 -0.2711  0.2819  0.6565
+27        P1   zero-shot UNSW→5G   LOI12       DR              5G BS2  @source_threshold   0.2121  0.7592  0.8658        0.3809 -0.1832  0.6995  0.9378
+28        P1       baseline UNSW→UNSW   LOI12       DR  UNSW test-final DR           @0.5   0.9931  0.9560  0.1095        0.9555  0.8703  0.9330  0.0219
+29        P1       baseline UNSW→UNSW   LOI12       DR  UNSW test-final DR  @source_threshold   0.9931  0.9560  0.1095        0.9468  0.7099  0.9868  0.0932
+30        P1   zero-shot UNSW→5G   LOI18       DR          5G full           @0.5   0.2772  0.7328  0.8333        0.3331 -0.2754  0.2300  0.5637
+31        P1   zero-shot UNSW→5G   LOI18       DR          5G full  @source_threshold   0.2772  0.7328  0.8333        0.3648 -0.2293  0.6932  0.9636
+32        P1   zero-shot UNSW→5G   LOI18       DR              5G BS2           @0.5   0.2817  0.7771  0.8658        0.3437 -0.2370  0.2390  0.5515
+33        P1   zero-shot UNSW→5G   LOI18       DR              5G BS2  @source_threshold   0.2817  0.7771  0.8658        0.3704 -0.1998  0.6986  0.9578
+34        P1       baseline UNSW→UNSW   LOI18       DR  UNSW test-final DR           @0.5   0.9932  0.9570  0.1095        0.9527  0.8684  0.9269  0.0214
+35        P1       baseline UNSW→UNSW   LOI18       DR  UNSW test-final DR  @source_threshold   0.9932  0.9570  0.1095        0.9466  0.7099  0.9863  0.0930
+36        P2   reverse 5G-BS1→UNSW     F31      ALL     UNSW test-final           @0.5   0.4538  0.3664  0.3665        0.5004  0.0016  0.0631  0.0623
+37        P2   reverse 5G-BS1→UNSW     F31      ALL     UNSW test-final  @source_threshold   0.4538  0.3664  0.3665        0.4475 -0.1138  0.6620  0.7671
+38        P2   reverse 5G-BS1→UNSW     F31       DR  UNSW test-final DR           @0.5   0.5399  0.1354  0.1095        0.5087  0.0222  0.0797  0.0623
+39        P2   reverse 5G-BS1→UNSW     F31       DR  UNSW test-final DR  @source_threshold   0.5399  0.1354  0.1095        0.5002  0.0003  0.7675  0.7671
+40        P2   reverse 5G-BS1→UNSW   LOI12      ALL     UNSW test-final           @0.5   0.4832  0.3487  0.3665        0.4707 -0.1128  0.0299  0.0884
+41        P2   reverse 5G-BS1→UNSW   LOI12      ALL     UNSW test-final  @source_threshold   0.4832  0.3487  0.3665        0.5183  0.0376  0.3511  0.3145
+42        P2   reverse 5G-BS1→UNSW   LOI12       DR  UNSW test-final DR           @0.5   0.5442  0.1299  0.1095        0.4652 -0.0798  0.0188  0.0884
+43        P2   reverse 5G-BS1→UNSW   LOI12       DR  UNSW test-final DR  @source_threshold   0.5442  0.1299  0.1095        0.5877  0.1161  0.4898  0.3145
+44        P2   reverse 5G-BS1→UNSW   LOI18      ALL     UNSW test-final           @0.5   0.4771  0.3478  0.3665        0.4868 -0.0368  0.1213  0.1477
+45        P2   reverse 5G-BS1→UNSW   LOI18      ALL     UNSW test-final  @source_threshold   0.4771  0.3478  0.3665        0.5276  0.0561  0.3773  0.3220
+46        P2   reverse 5G-BS1→UNSW   LOI18       DR  UNSW test-final DR           @0.5   0.5490  0.1404  0.1095        0.5929  0.1552  0.3335  0.1477
+47        P2   reverse 5G-BS1→UNSW   LOI18       DR  UNSW test-final DR  @source_threshold   0.5490  0.1404  0.1095        0.6075  0.1413  0.5371  0.3220
+48        P5  in-domain BS1→BS2     F31        -              5G BS2           @0.5   0.9994  0.9999  0.8658        0.9814  0.9684  0.9969  0.0342
+49        P5  in-domain BS1→BS2     F31        -              5G BS2  @source_threshold   0.9994  0.9999  0.8658        0.9281  0.9152  1.0000  0.1437
+50        P5  in-domain BS1→BS2   LOI12        -              5G BS2           @0.5   0.9976  0.9994  0.8658        0.9720  0.9600  0.9977  0.0537
+51        P5  in-domain BS1→BS2   LOI12        -              5G BS2  @source_threshold   0.9976  0.9994  0.8658        0.9608  0.9519  0.9993  0.0776
+52        P5  in-domain BS1→BS2   LOI18        -              5G BS2           @0.5   0.9976  0.9994  0.8658        0.9712  0.9587  0.9976  0.0551
+53        P5  in-domain BS1→BS2   LOI18        -              5G BS2  @source_threshold   0.9976  0.9994  0.8658        0.9609  0.9534  0.9997  0.0779
+54        P3        pooled UNSW+BS1     F31      ALL              5G BS2           @0.5   0.9994  0.9999  0.8658        0.9823  0.9774  0.9994  0.0347
+55        P3        pooled UNSW+BS1     F31      ALL              5G BS2  @source_threshold   0.9994  0.9999  0.8658        0.9843  0.9728  0.9971  0.0285
+56        P3        pooled UNSW+BS1     F31      ALL     UNSW test-final           @0.5   0.9579  0.9392  0.3665        0.8421  0.6596  0.9467  0.2625
+57        P3        pooled UNSW+BS1     F31      ALL     UNSW test-final  @source_threshold   0.9579  0.9392  0.3665        0.8691  0.7194  0.8928  0.1547
+58        P3        pooled UNSW+BS1   LOI12      ALL              5G BS2           @0.5   0.9974  0.9994  0.8658        0.9673  0.9578  0.9988  0.0642
+59        P3        pooled UNSW+BS1   LOI12      ALL              5G BS2  @source_threshold   0.9974  0.9994  0.8658        0.9746  0.9626  0.9976  0.0484
+60        P3        pooled UNSW+BS1   LOI12      ALL     UNSW test-final           @0.5   0.9557  0.9340  0.3665        0.8512  0.6770  0.9508  0.2483
+61        P3        pooled UNSW+BS1   LOI12      ALL     UNSW test-final  @source_threshold   0.9557  0.9340  0.3665        0.8731  0.7352  0.8684  0.1222
+62        P3        pooled UNSW+BS1   LOI18      ALL              5G BS2           @0.5   0.9976  0.9994  0.8658        0.9674  0.9578  0.9987  0.0639
+63        P3        pooled UNSW+BS1   LOI18      ALL              5G BS2  @source_threshold   0.9976  0.9994  0.8658        0.9741  0.9620  0.9975  0.0494
+64        P3        pooled UNSW+BS1   LOI18      ALL     UNSW test-final           @0.5   0.9554  0.9332  0.3665        0.8470  0.6690  0.9497  0.2557
+65        P3        pooled UNSW+BS1   LOI18      ALL     UNSW test-final  @source_threshold   0.9554  0.9332  0.3665        0.8722  0.7338  0.8667  0.1222
+66        P3        pooled UNSW+BS1     F31       DR              5G BS2           @0.5   0.9995  0.9999  0.8658        0.9822  0.9748  0.9986  0.0341
+67        P3        pooled UNSW+BS1     F31       DR              5G BS2  @source_threshold   0.9995  0.9999  0.8658        0.9436  0.9337  1.0000  0.1127
+68        P3        pooled UNSW+BS1     F31       DR  UNSW test-final DR           @0.5   0.9946  0.9729  0.1095        0.9581  0.9165  0.9254  0.0091
+69        P3        pooled UNSW+BS1     F31       DR  UNSW test-final DR  @source_threshold   0.9946  0.9729  0.1095        0.9250  0.6274  0.9904  0.1404
+70        P3        pooled UNSW+BS1   LOI12       DR              5G BS2           @0.5   0.9974  0.9994  0.8658        0.9703  0.9587  0.9979  0.0574
+71        P3        pooled UNSW+BS1   LOI12       DR              5G BS2  @source_threshold   0.9974  0.9994  0.8658        0.9463  0.9369  1.0000  0.1073
+72        P3        pooled UNSW+BS1   LOI12       DR  UNSW test-final DR           @0.5   0.9930  0.9574  0.1095        0.9530  0.8705  0.9269  0.0209
+73        P3        pooled UNSW+BS1   LOI12       DR  UNSW test-final DR  @source_threshold   0.9930  0.9574  0.1095        0.9415  0.6849  0.9898  0.1068
+74        P3        pooled UNSW+BS1   LOI18       DR              5G BS2           @0.5   0.9974  0.9994  0.8658        0.9691  0.9567  0.9977  0.0595
+75        P3        pooled UNSW+BS1   LOI18       DR              5G BS2  @source_threshold   0.9974  0.9994  0.8658        0.9447  0.9350  1.0000  0.1106
+76        P3        pooled UNSW+BS1   LOI18       DR  UNSW test-final DR           @0.5   0.9929  0.9579  0.1095        0.9512  0.8680  0.9234  0.0209
+77        P3        pooled UNSW+BS1   LOI18       DR  UNSW test-final DR  @source_threshold   0.9929  0.9579  0.1095        0.9408  0.6833  0.9888  0.1073
+                                                                   n_labeled_5G      roc_auc          pr_auc         balanced_acc             mcc          recall             fpr        
                                                                         mean  std    mean     std    mean     std         mean     std    mean     std    mean     std    mean     std
-phuong_an             tap_dich           kieu_nguong   k_ty_le_BS1                                                                                                                    
-few-shot UNSW-DR + 5G 5G BS2             @0,5          0.001           168.0  0.0  0.9433  0.0117  0.9868  0.0052       0.8438  0.0141  0.7198  0.0525  0.9711  0.0131  0.2836  0.0163
+scenario             target_set           threshold_type   k_ratio_BS1                                                                                                                    
+few-shot UNSW-DR + 5G 5G BS2             @0.5          0.001           168.0  0.0  0.9433  0.0117  0.9868  0.0052       0.8438  0.0141  0.7198  0.0525  0.9711  0.0131  0.2836  0.0163
                                                        0.010          1664.0  0.0  0.9892  0.0010  0.9972  0.0004       0.9347  0.0069  0.9080  0.0065  0.9954  0.0019  0.1261  0.0150
                                                        0.050          8322.0  0.0  0.9949  0.0011  0.9988  0.0003       0.9513  0.0003  0.9387  0.0010  0.9987  0.0002  0.0960  0.0005
                                                        0.200         33283.0  0.0  0.9969  0.0002  0.9993  0.0001       0.9650  0.0008  0.9538  0.0018  0.9984  0.0003  0.0684  0.0014
-                                         @nguong_nguon 0.001           168.0  0.0  0.9433  0.0117  0.9868  0.0052       0.5968  0.0269  0.3820  0.0601  0.9956  0.0002  0.8021  0.0541
+                                         @source_threshold 0.001           168.0  0.0  0.9433  0.0117  0.9868  0.0052       0.5968  0.0269  0.3820  0.0601  0.9956  0.0002  0.8021  0.0541
                                                        0.010          1664.0  0.0  0.9892  0.0010  0.9972  0.0004       0.8117  0.0063  0.7656  0.0076  0.9996  0.0003  0.3761  0.0129
                                                        0.050          8322.0  0.0  0.9949  0.0011  0.9988  0.0003       0.8821  0.0066  0.8576  0.0081  0.9998  0.0001  0.2356  0.0133
                                                        0.200         33283.0  0.0  0.9969  0.0002  0.9993  0.0001       0.9258  0.0016  0.9117  0.0017  0.9998  0.0001  0.1481  0.0032
-                      UNSW test-final DR @0,5          0.001           168.0  0.0  0.9931  0.0001  0.9560  0.0010       0.9534  0.0009  0.8690  0.0019  0.9283  0.0016  0.0215  0.0002
+                      UNSW test-final DR @0.5          0.001           168.0  0.0  0.9931  0.0001  0.9560  0.0010       0.9534  0.0009  0.8690  0.0019  0.9283  0.0016  0.0215  0.0002
                                                        0.010          1664.0  0.0  0.9929  0.0002  0.9557  0.0007       0.9546  0.0002  0.8709  0.0005  0.9305  0.0005  0.0213  0.0002
                                                        0.050          8322.0  0.0  0.9931  0.0000  0.9567  0.0002       0.9546  0.0010  0.8714  0.0009  0.9305  0.0022  0.0212  0.0002
                                                        0.200         33283.0  0.0  0.9929  0.0001  0.9569  0.0011       0.9520  0.0008  0.8674  0.0008  0.9255  0.0018  0.0215  0.0002
-                                         @nguong_nguon 0.001           168.0  0.0  0.9931  0.0001  0.9560  0.0010       0.9466  0.0004  0.7093  0.0017  0.9865  0.0011  0.0934  0.0010
+                                         @source_threshold 0.001           168.0  0.0  0.9931  0.0001  0.9560  0.0010       0.9466  0.0004  0.7093  0.0017  0.9865  0.0011  0.0934  0.0010
                                                        0.010          1664.0  0.0  0.9929  0.0002  0.9557  0.0007       0.9470  0.0004  0.7095  0.0018  0.9875  0.0003  0.0936  0.0010
                                                        0.050          8322.0  0.0  0.9931  0.0000  0.9567  0.0002       0.9472  0.0008  0.7123  0.0024  0.9863  0.0010  0.0918  0.0010
                                                        0.200         33283.0  0.0  0.9929  0.0001  0.9569  0.0011       0.9449  0.0006  0.7039  0.0042  0.9856  0.0013  0.0958  0.0025
-few-shot chỉ 5G       5G BS2             @0,5          0.001           168.0  0.0  0.9649  0.0174  0.9903  0.0059       0.8981  0.0160  0.8669  0.0199  0.9967  0.0033  0.2004  0.0331
+few-shot 5G-only       5G BS2             @0.5          0.001           168.0  0.0  0.9649  0.0174  0.9903  0.0059       0.8981  0.0160  0.8669  0.0199  0.9967  0.0033  0.2004  0.0331
                                                        0.010          1664.0  0.0  0.9906  0.0017  0.9978  0.0004       0.9393  0.0025  0.9145  0.0139  0.9957  0.0041  0.1171  0.0060
                                                        0.050          8322.0  0.0  0.9942  0.0000  0.9985  0.0000       0.9555  0.0004  0.9425  0.0011  0.9983  0.0002  0.0874  0.0006
                                                        0.200         33283.0  0.0  0.9968  0.0003  0.9992  0.0001       0.9625  0.0041  0.9492  0.0057  0.9979  0.0003  0.0729  0.0079
-                                         @nguong_nguon 0.001           168.0  0.0  0.9649  0.0174  0.9903  0.0059       0.9104  0.0180  0.7772  0.1479  0.9393  0.0816  0.1186  0.0504
+                                         @source_threshold 0.001           168.0  0.0  0.9649  0.0174  0.9903  0.0059       0.9104  0.0180  0.7772  0.1479  0.9393  0.0816  0.1186  0.0504
                                                        0.010          1664.0  0.0  0.9906  0.0017  0.9978  0.0004       0.9498  0.0080  0.9163  0.0177  0.9922  0.0032  0.0926  0.0142
                                                        0.050          8322.0  0.0  0.9942  0.0000  0.9985  0.0000       0.9495  0.0056  0.9379  0.0047  0.9991  0.0006  0.1001  0.0119
                                                        0.200         33283.0  0.0  0.9968  0.0003  0.9992  0.0001       0.9511  0.0097  0.9419  0.0114  0.9998  0.0001  0.0975  0.0194

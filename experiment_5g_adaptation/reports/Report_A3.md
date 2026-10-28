@@ -4,7 +4,7 @@
 **Experimental Specification:** [`docs/Plan_A_5G_Supervised_Adaptation.md`](../docs/Plan_A_5G_Supervised_Adaptation.md) §4  
 **Execution Script:** `src/A3_loao.py`  
 **Underlying Data Artifacts:**
-- Tables: `results/A3_loao/tables/A3_loao.csv`, `A3_ket_qua.json`
+- Tables: `results/A3_loao/tables/A3_loao.csv`, `A3_results.json`
 - Figures: `results/A3_loao/figures/A3_loao.png`
 - Execution Log: `results/A3_loao/logs/A3_log.txt`
 

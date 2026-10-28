@@ -38,7 +38,7 @@
 [19:58:13] n= 20000 seed=2 |   106s
 [19:59:56] n= 20000 seed=3 |   103s
 [20:01:41] n= 20000 seed=4 |   105s
-    n_nhan_5G bien_the         tap_test  nguong_mean  roc_auc_mean  roc_auc_std  fpr_mean  fpr_std  recall_mean  balanced_acc_mean
+    n_5G_labels variant         test_set  threshold_mean  roc_auc_mean  roc_auc_std  fpr_mean  fpr_std  recall_mean  balanced_acc_mean
 0          50     A2-a           5G BS2       0.7917        0.9604       0.0143    0.1645   0.1039       0.9239             0.8797
 1          50     A2-b           5G BS2       0.6640        0.8527       0.0154    0.4041   0.3181       0.8126             0.7043
 2          50     A2-b  UNSW test-final       0.7287        0.9572       0.0002    0.1057   0.0008       0.8559             0.8751
@@ -89,39 +89,39 @@
 47      20000     A2-d           5G BS2       0.7218        0.9960       0.0006    0.0652   0.0096       0.9963             0.9656
 {
  "H1": {
-  "khoang_cach_a_tru_b": {
+  "gap_a_minus_b": {
    "50": 0.1076892440314815,
    "100": 0.059816603904634946,
    "200": 0.02910164064249654
   },
-  "dung": true
+  "accepted": true
  },
  "H2": {
-  "ty_le_lap": {
+  "closure_ratio": {
    "50": 0.3477803999501841,
    "100": 0.5351352879963613,
    "200": 0.65472086778378
   },
-  "dung": true
+  "accepted": true
  },
  "H3": {
-  "fpr_d_tru_b": {
+  "fpr_d_minus_b": {
    "50": -0.08454987834549882,
    "100": 0.10359749739311785,
    "200": 0.005439694125825484,
    "500": -0.04589850538755652,
    "1000": -0.03737400069516855
   },
-  "dung": false
+  "accepted": false
  },
- "n_toi_thieu": {
+ "min_n_required": {
   "A2-a": 2000,
   "A2-b": 5000,
   "A2-c": 2000,
   "A2-d": 5000
  },
- "diem_dung": {
+ "stop_criteria": {
   "A2-b_n20000_roc_bs2": 0.9960116668604607,
-  "phai_dung": false
+  "must_stop": false
  }
 }

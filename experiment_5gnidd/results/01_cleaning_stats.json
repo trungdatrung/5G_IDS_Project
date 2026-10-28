@@ -1,0 +1,59 @@
+{
+ "n_raw": 1215890,
+ "n_by_station": {
+  "BS1": 728316,
+  "BS2": 487574
+ },
+ "published_labels": {
+  "Benign": 477737,
+  "UDPFlood": 457340,
+  "HTTPFlood": 140812,
+  "SlowrateDoS": 73124,
+  "TCPConnectScan": 20052,
+  "SYNScan": 20043,
+  "UDPScan": 15906,
+  "SYNFlood": 9721,
+  "ICMPFlood": 1155
+ },
+ "mislabeled_duplicate_capture": 281529,
+ "after_removing_duplicate_capture": 934361,
+ "nb01_removed_duplicates": 554789,
+ "nb01_removed_label_conflicts": 16,
+ "n_final": 379556,
+ "attack_ratio": 0.8333,
+ "by_class": {
+  "HTTPFlood": 140811,
+  "SlowrateDoS": 73123,
+  "UDPFlood": 69921,
+  "Benign": 63283,
+  "TCPConnectScan": 20041,
+  "SYNFlood": 9721,
+  "SYNScan": 1043,
+  "ICMPFlood": 1030,
+  "UDPScan": 583
+ },
+ "by_station_class": {
+  "BS1": {
+   "HTTPFlood": 76120,
+   "Benign": 40267,
+   "UDPFlood": 39265,
+   "SlowrateDoS": 36091,
+   "TCPConnectScan": 10013,
+   "SYNFlood": 4792,
+   "ICMPFlood": 568,
+   "SYNScan": 524,
+   "UDPScan": 374
+  },
+  "BS2": {
+   "HTTPFlood": 64691,
+   "SlowrateDoS": 37032,
+   "UDPFlood": 30656,
+   "Benign": 23016,
+   "TCPConnectScan": 10028,
+   "SYNFlood": 4929,
+   "SYNScan": 519,
+   "ICMPFlood": 462,
+   "UDPScan": 209
+  }
+ }
+}

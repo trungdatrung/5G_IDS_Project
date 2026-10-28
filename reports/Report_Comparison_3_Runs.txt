@@ -1,0 +1,588 @@
+================================================================================
+          REPORT COMPARING RESULTS FROM 3 MODEL RUNS - AND THEIR CAUSES
+                   5G IDS Project / UNSW-NB15 (binary label)
+================================================================================
+Run date         : 2026-10-01
+Run 1 model      : notebooks/02_Model_Training.ipynb      -> random_forest.joblib
+Run 2 model      : notebooks/03_Model_Training_v2.ipynb   -> random_forest_v2.joblib
+Run 3 model      : notebooks/04_Precision_Improvement.ipynb-> random_forest_v3_calibrated.joblib
+Source data      : notebooks/model_comparison_results.csv
+                   models/random_forest*_metrics.json
+Figure           : reports/confusion_matrices.png
+Related report   : reports/Report_Progress_3_Models.txt (progression of changes)
+
+This report answers one question: WHERE DOES EACH NUMBER IN THE RESULTS TABLE
+COME FROM.
+
+
+SUMMARY
+--------------------------------------------------------------------------------
+On the shared evaluation set test-final (25,284 rows), rule P(Attack) >= threshold:
+
+                   Accuracy Precision Recall    F1     FPR   ROC-AUC  PR-AUC
+  Run 1 (NB02)      0.8156   0.6773  0.9491  0.7905  0.2616  0.9548  0.9264
+  Run 2 (NB03)      0.8287   0.6965  0.9438  0.8015  0.2379  0.9600  0.9420
+  Run 3 (NB04)      0.8820   0.8251  0.8605  0.8424  0.1055  0.9595  0.9416
+
+Three causes govern the entire table above:
+
+  CAUSE 1 - Train/test distribution shift (affects all 3 models equally).
+    The rule "slow TCP handshake => Attack" holds on train (ratio 4.01:1) and
+    fails on test (1.04:1). This is why ALL THREE models have Precision much
+    lower than what is measured on validation (0.91).
+
+  CAUSE 2 - Forest parameters (only distinguishes run 1 from runs 2-3).
+    max_depth None -> 20, max_features 'sqrt' -> 0.5, 100 -> 300 trees.
+    This is the ONLY cause of a genuine change in ROC-AUC/PR-AUC.
+
+  CAUSE 3 - Decision threshold (governs the entire difference run 2 -> run 3).
+    0.5 -> 0.515 -> 0.711. Moving the cutoff point on the SAME ROC curve.
+
+
+================================================================================
+PART 1. COMPARISON CONDITIONS
+================================================================================
+  Evaluation set : test-final, 25,284 rows (16,017 Normal / 9,267 Attack).
+                   This is the ONLY set none of the 3 models has used for any
+                   decision (training, parameter selection, threshold
+                   selection).
+  Rule         : Attack if P(Attack) >= threshold, each model's own threshold.
+  Features     : 31 features, 183 columns after one-hot - IDENTICAL across
+                 all 3 models.
+  Preprocessing: IDENTICAL (one-hot proto/service/state, fit inside the
+                 Pipeline).
+
+  => Any difference in the results table can ONLY come from: forest
+     parameters, calibration, or the threshold. No other factor is in play.
+
+
+================================================================================
+PART 2. FULL RESULTS TABLE
+================================================================================
+
+2.1 Classification metrics
+--------------------------------------------------------------------------------
+                      Run 1      Run 2      Run 3
+  Accuracy           0.8156     0.8287     0.8820
+  Precision          0.6773     0.6965     0.8251
+  Recall             0.9491     0.9438     0.8605
+  F1                 0.7905     0.8015     0.8424
+  FPR                0.2616     0.2379     0.1055
+  Balanced accuracy  0.8437     0.8529     0.8775
+  ROC-AUC            0.9548     0.9600     0.9595
+  PR-AUC             0.9264     0.9420     0.9416
+  Threshold          0.500      0.515      0.711
+
+2.2 Confusion matrix
+--------------------------------------------------------------------------------
+                      TN        FP       FN       TP
+  Run 1             11,827    4,190      472    8,795
+  Run 2             12,206    3,811      521    8,746
+  Run 3             14,327    1,690    1,293    7,974
+
+2.3 Error structure - the most important way to read this
+--------------------------------------------------------------------------------
+                  Total errors Error rate  FP share   Alerts       Real
+                  (FP+FN)                  of errors   fired        attacks
+  Run 1            4,662      18.44%      89.9%       12,985       9,267
+  Run 2            4,332      17.13%      88.0%       12,557       9,267
+  Run 3            2,983      11.80%      56.7%        9,664       9,267
+
+  How to read this table:
+  - In runs 1 and 2, nearly 90% of errors are FALSE ALARMS. The model fires
+    12,985 and 12,557 alerts for 9,267 real attacks - 40% and 36% excess.
+  - In run 3, the alert count (9,664) nearly matches the real attack count
+    (9,267), but the error composition has changed: FP is now only 57% of
+    total errors, FN has risen to 43%.
+  - Accuracy rising is NOT because the model got "smarter," but because the
+    total error count drops when false alarms - the majority error type -
+    are cut.
+
+
+================================================================================
+PART 3. CAUSE OF EACH RESULT - RUN 1 MODEL
+================================================================================
+Configuration: 100 trees, max_depth=None, max_features='sqrt',
+          max_samples=None, min_samples_leaf=1, class_weight=None,
+          threshold 0.5. Fit on all 98,934 train rows.
+
+3.1 Accuracy = 0.8156 - why only this level
+--------------------------------------------------------------------------------
+  Calculation: (11,827 + 8,795) / 25,284 = 0.8156. Total errors: 4,662 rows.
+  CAUSE: 4,190/4,662 = 89.9% of errors are False Positives. This model's
+  accuracy is essentially determined by its false-alarm rate on the Normal
+  class. The Normal class makes up 63.35% of the test set, so each 1-point
+  rise in FPR pulls Accuracy down by about 0.63 points.
+
+3.2 Precision = 0.6773 - the lowest figure and its deepest cause
+--------------------------------------------------------------------------------
+  Calculation: 8,795 / (8,795 + 4,190) = 0.6773. About 1 in 3 alerts is false.
+
+  CAUSE 1 - Overfitting from max_depth=None.
+    This configuration reaches Accuracy = 1.0000 on the fit data itself
+    (TN 39,860, FP 0, FN 0, TP 39,287) - complete memorization. With
+    max_depth=None and min_samples_leaf=1, trees grow until each leaf is
+    pure for one class, even leaves containing just 1 sample. The forest
+    learns the noise too.
+
+  CAUSE 2 - Distribution shift (the main, measured cause).
+    Precision decomposition: Precision = TPR*pi / (TPR*pi + FPR*(1-pi)):
+
+      Scenario                                  TPR     FPR     pi   Precision
+      [MEASURED] validation                    0.9577  0.0929  0.4964  0.9104
+      [COMPUTED] validation TPR,FPR + test pi  0.9577  0.0929  0.3665  0.8564
+      [COMPUTED] test TPR,FPR + validation pi  0.9504  0.2627  0.4964  0.7810
+      [MEASURED] test-dev                      0.9504  0.2627  0.3665  0.6767
+
+    Precision drops 0.2337 from validation to test:
+        - due to the Attack ratio falling (49.64% -> 36.65%) : 0.0540 (~23%)
+        - due to FPR rising (0.0929 -> 0.2627)                : 0.1294 (~55%)
+        - the remainder is the interaction between the two factors
+    Recall barely changes (0.9577 -> 0.9504). The entire problem is FPR
+    nearly tripling.
+
+  CAUSE 3 - A feature region that reverses meaning (the concrete mechanism
+  behind FPR rising).
+                     % Normal   % Attack   Attack    Normal   Attack:Normal
+                     is slow    is slow    slow zone slow zone  ratio
+      train-fit       19.0%      77.5%     30,462    7,590      4.01
+      validation       18.8%      77.2%      7,586    1,871      4.06
+      test-dev          41.5%      74.6%      6,909    6,647      1.04
+
+    ("slow" = tcprtt > 0.01 s, the TCP handshake time)
+
+    In train, falling into the slow-handshake region makes Attack 4 times
+    more likely. The forest learns this rule very confidently. But in test,
+    the share of "slow" Normal jumps from 19.0% to 41.5%, dropping the
+    ratio to 1.04 - the rule loses all its value.
+
+    Measured consequence:
+      FPR within the slow zone  : validation 0.433 -> test-dev 0.551
+      FPR outside the slow zone : validation 0.014 -> test-dev 0.058
+
+  CAUSE 4 - A class ratio created by the cleaning step itself.
+    Raw Attack ratio: train 68.06%, test 55.06%.
+    After removing duplicates + contradictory rows: train 49.64%, test 36.65%.
+    The cleaning step affects the two sets DIFFERENTLY, creating a 13-point
+    shift. This is the source of the 0.0540 component in the decomposition
+    above.
+
+  CAUSE 5 - Residual label noise (sets a ceiling on Precision).
+    1,993 test rows (3.94%) exactly match both features and label with a
+    train row. 65 test-dev rows match a train row's features but have a
+    DIFFERENT label. No model can fix this portion.
+
+3.3 Recall = 0.9491 - why it's this high
+--------------------------------------------------------------------------------
+  Calculation: 8,795 / (8,795 + 472) = 0.9491. Only 472/9,267 attacks missed.
+
+  CAUSE 1 - Threshold 0.5 is a "lenient" threshold.
+    A low threshold => the model is willing to call Attack => catches more,
+    but with more false alarms. High Recall and low Precision are TWO SIDES
+    of the same choice, not two independent phenomena.
+
+  CAUSE 2 - Most attacks are genuinely easy to distinguish.
+    Recall by category (whole test set):
+      Analysis 1.0000 | Worms 1.0000 | Backdoor 1.0000 | Generic 0.9930
+      Reconnaissance 0.9929 | DoS 0.9893 | Exploits 0.9836 | Shellcode 0.9514
+      Fuzzers 0.8158  <- the only exception
+    Only Fuzzers drags Recall down. Fuzzers (n=4,436) sends random/malformed
+    data to probe for bugs, so its network flow most resembles normal
+    traffic. Fuzzers is estimated to contribute ~817/1,003 = 81% of total
+    False Negatives.
+
+3.4 F1 = 0.7905
+--------------------------------------------------------------------------------
+  F1 = 2TP/(2TP+FP+FN) = the harmonic mean of 0.6773 and 0.9491.
+  CAUSE: the harmonic mean heavily penalizes the lower value, so F1 (0.79)
+  is pulled closer to Precision (0.68) than to Recall (0.95). This model's
+  F1 is low mainly because Precision is low.
+
+3.5 ROC-AUC = 0.9548 and PR-AUC = 0.9264 - the lowest of the 3 models
+--------------------------------------------------------------------------------
+  These two metrics do NOT depend on the threshold, so they correctly
+  measure the model's ranking quality.
+
+  CAUSE 1 - max_features='sqrt' makes each tree weak.
+    Each split considers only ~13 of 183 columns. Individual trees carry
+    little information, relying more heavily on averaging.
+
+  CAUSE 2 - Only 100 trees => coarse probability resolution.
+    predict_proba is the vote average of 100 trees, so values are discrete
+    in multiples of ~0.01. Measured consequence: 286/50,567 rows (0.57%)
+    have P(Attack) exactly equal to 0.5 - the model cannot distinguish them.
+    Run 2 (300 trees) has 0 such rows. Coarse resolution reduces ranking
+    ability, pulling AUC down.
+
+  CAUSE 3 - Overfitting makes probabilities less reliable on new data.
+
+3.6 FPR = 0.2616
+--------------------------------------------------------------------------------
+  4,190/16,017 Normal rows falsely flagged. The cause is identical to
+  section 3.2 - this is the exact underlying metric Precision depends on.
+
+
+================================================================================
+PART 4. CAUSE OF EACH RESULT - RUN 2 MODEL
+================================================================================
+Configuration: 300 trees, max_depth=20, max_features=0.5, max_samples=0.7,
+          min_samples_leaf=1, class_weight=None, threshold 0.515152.
+          Fit on all 98,934 train rows.
+
+4.1 ROC-AUC 0.9600 and PR-AUC 0.9420 - A GENUINE IMPROVEMENT
+--------------------------------------------------------------------------------
+  This is run 2's most important result, because these two metrics don't
+  depend on the threshold: the model REALLY ranks risk better than run 1
+  (+0.52 and +1.56 points).
+
+  CAUSE 1 - max_depth=20 prevents memorization.
+    Accuracy on the fit data itself: 1.0000 (run 1) -> 0.9775 (run 2).
+    The train-fit -> validation gap: 7.3 points -> 4.5 points.
+    OOB accuracy: 0.9229 -> 0.9280.
+
+  CAUSE 2 - max_features=0.5 makes each tree much stronger.
+    Each split considers ~91/183 columns instead of ~13. Trees see more
+    features and can find better split points.
+
+  CAUSE 3 - 300 trees + max_samples=0.7.
+    More trees => smoother probabilities (steps of ~1/300 instead of
+    ~1/100) and more stability. max_samples=0.7 increases diversity between
+    trees, making the averaging more effective.
+
+4.2 Accuracy 0.8287 / Precision 0.6965 / Recall 0.9438 / F1 0.8015
+--------------------------------------------------------------------------------
+  Versus run 1: TN +379, FP -379, FN +49, TP -49.
+  The model trades 49 more missed attacks for 379 fewer false alarms
+  (a 1:7.7 ratio).
+
+  CAUSE: two factors combine, but factor (a) accounts for most of it.
+    (a) Better ranking quality (section 4.1) => fewer FP at the same
+        threshold.
+    (b) The threshold nudges from 0.5 to 0.515 => slightly stricter.
+
+4.3 Why the improvement is only SMALL (+1.3 points Accuracy)
+--------------------------------------------------------------------------------
+  CAUSE 1 - The parameter search barely distinguishes between configurations.
+    The top 10 configurations in RandomizedSearchCV have CV PR-AUC from
+    0.9822 to 0.9829, standard deviation ~0.0015. The difference is within
+    noise. No configuration truly stands out - so a large jump should not
+    be expected.
+
+  CAUSE 2 - The CV-selected threshold barely moves (0.5 -> 0.515).
+    TunedThresholdClassifierCV selects the threshold on the TRAIN
+    distribution (49.64% Attack). On that distribution, the F1-optimal
+    threshold was already very close to 0.5. So this threshold doesn't help
+    the test distribution (36.65% Attack).
+
+  CAUSE 3 - The real ceiling: distribution shift is never touched.
+    The validation -> test gap is still ~10 points of Accuracy
+    (0.9322 -> 0.8287). Parameter tuning fixes OVERFITTING, not
+    DISTRIBUTION SHIFT. The slow-tcprtt region still reverses meaning
+    exactly as before - that's a property of the data.
+
+4.4 Distribution-shift remedies tried, all of which FAILED (step 5, whole
+test set)
+--------------------------------------------------------------------------------
+                                            Accuracy Precision Recall    F1
+    Run 2 - main configuration               0.8276   0.6951  0.9436  0.8005
+    5a: threshold chosen on a "test-like
+        validation"                          0.7928   0.6454  0.9648  0.7734
+    5b: 5a + importance weighting            0.7916   0.6441  0.9644  0.7723
+    5c: add 4 ratio features                 0.8221   0.6852  0.9519  0.7968
+
+  CAUSE OF FAILURE: both 5a and 5b rely on the covariate-shift assumption -
+  that P(y|x) stays constant, only P(x) changes. But the data here violates
+  that assumption: within the slow-tcprtt region, P(Attack | slow) changes
+  from 0.80 down to 0.51. This is CONCEPT SHIFT, not covariate shift.
+  Reweighting train samples cannot fix it when the label-feature
+  relationship itself has changed.
+  5c (ratio features) has the highest PR-AUC in the group (0.9441) but F1
+  is still lower than the main configuration - adding features doesn't
+  compensate for the root problem.
+
+
+================================================================================
+PART 5. CAUSE OF EACH RESULT - RUN 3 MODEL
+================================================================================
+Configuration: forest parameters UNCHANGED from run 2, added isotonic
+          calibration (cv=5), threshold 0.710631 chosen under the
+          FPR <= 0.10 constraint on test-dev. Fit on 79,147 rows
+          (80% of train) - FEWER than run 2.
+
+5.1 ROC-AUC 0.9595 and PR-AUC 0.9416 - EQUAL to run 2, and this is INEVITABLE
+--------------------------------------------------------------------------------
+  Run 2: ROC-AUC 0.9600 / PR-AUC 0.9420
+  Run 3: ROC-AUC 0.9595 / PR-AUC 0.9416
+
+  CAUSE - this is not a coincidence but a mathematical consequence:
+    ROC-AUC depends only on the RANKING ORDER of samples, not on the
+    absolute probability values. Isotonic regression is a NON-DECREASING
+    MONOTONIC function, and a monotonic transform PRESERVES order.
+    Therefore, calibration CANNOT change ROC-AUC, as a matter of principle.
+
+    The tiny difference (-0.0005) comes from three minor sources:
+      (a) The model is fit on 79,147 rows instead of 98,934 - 20% less data.
+      (b) Isotonic creates FLAT segments, turning some previously
+          distinguishable pairs into ties, slightly reducing AUC.
+      (c) predict_proba is the average of 5 calibrated models.
+
+  CONCLUSION: run 3 does NOT distinguish Normal/Attack better than run 2.
+
+5.2 Accuracy 0.8820 / Precision 0.8251 / Recall 0.8605 - entirely due to the
+THRESHOLD
+--------------------------------------------------------------------------------
+  Isolating evidence, measured on the same test-final set:
+
+                                        Accuracy Precision Recall    F1
+    Run 2 @0.515                         0.8287   0.6965  0.9438  0.8015
+    B: calibrated @0.5                   0.8289   0.6976  0.9413  0.8013
+    C_dev: calibrated @0.711 (CHOSEN)    0.8820   0.8251  0.8605  0.8424
+
+  Row B and the run 2 row are nearly identical (F1 0.8013 vs 0.8015).
+  => At the SAME operating point, calibration changes nothing at all.
+  => The entire +5.3 Accuracy and +12.9 Precision comes from moving the
+     threshold 0.5 -> 0.711 on the same model.
+
+5.3 Why moving the threshold is so effective
+--------------------------------------------------------------------------------
+  CAUSE: False Positives concentrate right near the decision boundary,
+  while True Positives sit far from it. Measured on test-dev:
+
+    P(Attack) percentiles by outcome group:
+              n       q10     q25     q50     q75     q90
+      TP    8,806    0.698   0.912   0.992   1.000   1.000
+      FP    4,207    0.526   0.566   0.648   0.763   0.877
+      TN   11,810    0.000   0.000   0.000   0.017   0.393
+      FN      460    0.254   0.323   0.404   0.459   0.488
+
+    36.3% of FPs fall within [0.50 ; 0.60)
+    63.0% of FPs fall within [0.50 ; 0.70)
+    only 7.4% of FPs have P >= 0.90
+
+  TP's median is 0.992 (the model is very confident), FP's median is 0.648
+  (the model is hesitant). The two groups are clearly separated on the
+  probability scale. Raising the threshold to 0.711 cuts right into the
+  hesitant FP crowd:
+      FP: 3,811 -> 1,690  (-55.7%)
+      TP: 8,746 -> 7,974  (- 8.8%)
+
+  But the cost is 772 additional missed attacks. The trade-off ratio is
+  1:2.7 - less efficient than the run 1 -> run 2 step (1:7.7), because the
+  higher the threshold climbs, the more TP must be sacrificed for each FP
+  removed.
+
+5.4 Recall drops to 0.8605 - the cause
+--------------------------------------------------------------------------------
+  Versus run 2: FN rises 521 -> 1,293 (+772).
+
+  CAUSE - split into two parts:
+    (a) The THRESHOLD portion (nearly all of it). On the SAME run 3 model,
+        only changing the threshold:
+            B: calibrated @0.5   -> TP 8,723
+            C_dev: @0.711         -> TP 7,974
+        => 749 attacks with P(Attack) in [0.5 ; 0.711), previously counted
+           as Attack, are now classified as Normal.
+    (b) The TRAINING DATA portion (small). Run 3 is fit on 79,147 rows
+        instead of 98,934, so at the same 0.5 threshold it already had a
+        slightly lower TP than run 2 (8,723 vs 8,746, i.e. 23 rows).
+    749 + 23 = 772, matching the observed difference.
+
+  Looking at the percentile table in section 5.3: TP's q10 is 0.698, meaning
+  ~10% of caught attacks have a probability below 0.70 - exactly the group
+  lost when the threshold is raised.
+
+5.5 Does calibration actually work - NO, and it's measured
+--------------------------------------------------------------------------------
+  Brier score (lower = probabilities closer to reality):
+                            validation      test-dev
+    Before calibration        0.04586        0.10673
+    After calibration         0.04547        0.10688
+
+  On validation (train distribution): improves by 0.00039 - negligible.
+  On test-dev (test distribution)    : GETS WORSE by 0.00015.
+
+  CAUSE: isotonic is fit on train-fit, so it learns the probability scale
+  of the TRAIN DISTRIBUTION. The test distribution differs => the
+  calibration function does not transfer. Calibration can only fix
+  "probabilities on the wrong scale," not "the distribution has shifted."
+
+5.6 Threshold 0.711 - its origin and a fair warning
+--------------------------------------------------------------------------------
+  The threshold is chosen by a pre-declared rule: the highest Recall among
+  thresholds satisfying FPR <= 0.10, swept on test-dev.
+
+  Threshold sweep table on test-dev (calibrated model):
+      Threshold  Precision  Recall     F1      FPR
+       0.50        0.6954   0.9417   0.8000   0.2387
+       0.60        0.7677   0.9005   0.8288   0.1576
+       0.70        0.8266   0.8625   0.8442   0.1046
+       0.7106      0.8328   0.8594   0.8459   0.0998  <- chosen
+       0.80        0.8790   0.8256   0.8515   0.0657
+       0.90        0.9442   0.7485   0.8351   0.0256
+
+  Note: the highest F1 is actually at threshold 0.80 (0.8515), NOT 0.7106.
+  Run 3 does not optimize F1 - it optimizes Recall subject to an FPR
+  constraint.
+
+  WARNING: test-dev is LABELED test-distribution data. Runs 1 and 2 never
+  had access to this information. A pre-planned control test, C_val: the
+  same run 3 model, but the threshold chosen on train's validation set.
+
+      Threshold chosen on validation : 0.4636
+      Threshold chosen on test-dev   : 0.7106
+      (the same FPR <= 0.10 constraint, yet very far apart)
+
+      C_val on test-final: Accuracy 0.8122 / Precision 0.6715
+                             / Recall 0.9545 / F1 0.7884
+                             (TN 11,690  FP 4,327  FN 422  TP 8,845)
+
+  C_val is LOWER than even run 2 (F1 0.7884 vs 0.8015).
+
+  CAUSE of the two thresholds being so far apart: the same calibrated
+  probability level carries a different meaning in the two distributions.
+  On validation, FPR = 0.10 is reached at threshold 0.46; on test-dev it
+  takes until 0.71 - because test's Normal traffic sits deeper in the
+  region the model considers suspicious.
+
+  => Most of run 3's "improvement" is an INFORMATION ADVANTAGE (seeing
+     labels from the test distribution), not a model advantage.
+
+
+================================================================================
+PART 6. CAUSE BY METRIC (looking across all 3 models)
+================================================================================
+
+6.1 Why ALL THREE have Precision much lower than validation
+--------------------------------------------------------------------------------
+    Precision on validation (train distribution) : ~0.91
+    Precision on test       (test distribution)   : 0.68 / 0.70 / 0.83
+  CAUSE: distribution shift (Part 3.2). ~23% due to the class ratio, ~55%
+  due to FPR rising. This is a SHARED cause, no model escapes it.
+
+6.2 Why Recall is high in runs 1-2 and low in run 3
+--------------------------------------------------------------------------------
+  CAUSE: the threshold, not model capability. Runs 1-2 cut around ~0.5, so
+  they're generous; run 3 cuts at 0.711, so it's strict. The same model
+  (run 2 vs run 3), cut at the same point, gives nearly equal Recall
+  (0.9438 vs 0.9413).
+
+6.3 Why Accuracy rises steadily, but this should NOT be read as "the
+model getting better"
+--------------------------------------------------------------------------------
+  CAUSE: Normal makes up 63.35% of the test set, and in runs 1-2, ~90% of
+  errors are FP. Cutting FP quickly drops the total error count, raising
+  Accuracy. But run 3 misses 772 more attacks than run 2 - by
+  intrusion-detection criteria, that is a step backward. Accuracy cannot
+  reflect this because it lumps together two error types with very
+  different costs.
+
+6.4 Why F1 rises steadily
+--------------------------------------------------------------------------------
+  CAUSE: F1 balances Precision and Recall with EQUAL weight. In runs 1-2,
+  Precision (0.68-0.70) is much lower than Recall (0.94), pulling F1 down.
+  Moving the threshold up brings the two metrics closer together
+  (0.83 vs 0.86), so F1 rises. This does NOT mean the model got better - it
+  only means the operating point moved closer to the assumption that
+  "Precision and Recall matter equally."
+
+6.5 Why ROC-AUC/PR-AUC barely change between run 2 and run 3
+--------------------------------------------------------------------------------
+  CAUSE: see section 5.1 - isotonic is a monotonic transform, preserving
+  ranking order. These two metrics depend only on order. This is the
+  strongest evidence that run 3 does not improve model quality.
+
+6.6 Why Balanced accuracy rises more slowly than Accuracy
+--------------------------------------------------------------------------------
+    Accuracy          : 0.8156 -> 0.8287 -> 0.8820  (+6.6 points total)
+    Balanced accuracy : 0.8437 -> 0.8529 -> 0.8775  (+3.4 points total)
+  CAUSE: balanced accuracy = (TPR + TNR)/2, weighting the two classes
+  equally, so it does not benefit from the Normal class being the
+  majority. It shows the real improvement is only about half of what
+  Accuracy suggests.
+
+
+================================================================================
+PART 7. SUMMARY TABLE OF CAUSES
+================================================================================
+
+  Observed result                    Cause                           Evidence
+  ---------------------------------- ------------------------------ -------------
+  All 3 models: test Precision ~0.23 Train/test distribution shift   Decomposition:
+  lower than validation              (tcprtt zone flips 4.01:1       23% from pi,
+                                     -> 1.04:1)                      55% from FPR
+  ---------------------------------- ------------------------------ -------------
+  Run 1 has the lowest AUC           max_features='sqrt' (~13/183)   286 rows tied
+                                     + only 100 trees                 at P=0.5
+  ---------------------------------- ------------------------------ -------------
+  Run 1 memorizes train              max_depth=None,                 Train accuracy
+                                     min_samples_leaf=1              = 1.0000
+  ---------------------------------- ------------------------------ -------------
+  Run 2's AUC genuinely rises        max_depth=20, max_features=0.5  PR-AUC 0.9264
+  (+0.52 ROC, +1.56 PR)              300 trees, max_samples=0.7      -> 0.9420
+  ---------------------------------- ------------------------------ -------------
+  Run 2 only gains ~1 point          The search can't distinguish    Top-10 CV
+                                     configurations (std ~0.0015)     0.9822-0.9829
+  ---------------------------------- ------------------------------ -------------
+  Run 3's AUC = run 2's              Isotonic is a monotonic         0.9600 vs
+                                     transform, preserves order      0.9595
+  ---------------------------------- ------------------------------ -------------
+  Run 3 Precision +12.9 points       Threshold moved 0.5 -> 0.711;   B@0.5 gives F1
+                                     FPs concentrate near boundary    0.8013 = run 2
+  ---------------------------------- ------------------------------ -------------
+  Run 3 Recall -8.3 points           772 attacks with P between      TP's q10
+                                     0.515 and 0.711                 = 0.698
+  ---------------------------------- ------------------------------ -------------
+  Calibration provides no benefit    The calibration function        Brier test-dev
+                                     learns the train distribution,  0.10673 ->
+                                     doesn't transfer to test         0.10688 (worse)
+  ---------------------------------- ------------------------------ -------------
+  Most of run 3's advantage is an    Threshold chosen using LABELED  C_val gives F1
+  information advantage              test-dev                       0.7884 < run 2
+  ---------------------------------- ------------------------------ -------------
+  Step 5 (distribution-shift         The data is CONCEPT SHIFT,      5a/5b F1
+  remedies) all failed               not covariate shift              0.7734/0.7723
+  ---------------------------------- ------------------------------ -------------
+  Fuzzers is the only weakness       Its network flow most            Recall 0.816
+  in Recall                          resembles normal traffic        vs >=0.94
+
+
+================================================================================
+PART 8. CONCLUSION
+================================================================================
+  The three runs are NOT three steadily improving models. More precisely:
+
+    - Run 1 -> Run 2: the model REALLY got better, but only slightly
+      (PR-AUC +1.6 points).
+      Cause: parameter tuning prevented overfitting.
+      Limitation: never touches the distribution shift.
+
+    - Run 2 -> Run 3: the model did NOT get better (AUC equal within noise).
+      What changed was the OPERATING POINT on the same ROC curve.
+      Cause: threshold 0.515 -> 0.711, chosen using labeled test data.
+
+  The real bottleneck is not the model but the DATA: the rule "slow
+  handshake => Attack" holds on train and fails on test, plus a 13-point
+  class-ratio shift created by the cleaning step itself. This is why every
+  model-side effort - parameter tuning, calibration, importance weighting,
+  feature engineering - only produces small or no changes.
+
+  There is NO "best" ranking: runs 1-2 give ~2 correct alerts per 1 false
+  alert at Recall 0.94; run 3 gives ~5 correct alerts per 1 false alert at
+  Recall 0.86. In an IDS, a False Negative is an intrusion that goes
+  undetected, a False Positive is an analyst's time. Which point to choose
+  is an OPERATIONAL decision, not a technical conclusion.
+
+
+================================================================================
+PART 9. DATA SOURCES
+================================================================================
+  notebooks/model_comparison_results.csv     (notebook 05, 2026-10-01 13:12)
+  models/random_forest_metrics.json          (notebook 02, 2026-10-01 12:00)
+  models/random_forest_v2_metrics.json       (notebook 03, 2026-10-01 13:03)
+  models/random_forest_v3_metrics.json       (notebook 04, 2026-10-01 13:08)
+  reports/confusion_matrices.png             (notebook 05)
+
+  Every notebook ran fully, sequentially, with zero cell errors (9/9, 8/8,
+  15/15, 18/18, 10/10 cells). Every number in this report is taken from the
+  2026-10-01 run.
+================================================================================

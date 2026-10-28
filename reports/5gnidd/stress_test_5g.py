@@ -60,7 +60,7 @@ for k, f in scen.items():
         pr = p >= thr
         r[f'@{thr}'] = {'FPR': float(pr[y == 0].mean()), 'Recall': float(pr[y == 1].mean()),
                         'BalAcc': float((pr[y == 1].mean() + 1 - pr[y == 0].mean()) / 2)}
-        r[f'@{thr}']['recall_theo_loai'] = {c: float(pr[(FIN.attack_cat == c).values].mean())
+        r[f'@{thr}']['recall_by_category'] = {c: float(pr[(FIN.attack_cat == c).values].mean())
                                            for c in ['Reconnaissance', 'DoS', 'Exploits', 'Fuzzers', 'Generic']}
     r['ROC_AUC'] = float(roc_auc_score(y, p))
     # FPR on Normal TCP flows that completed a handshake (closest analogue of 5G benign HTTPS/SSH)

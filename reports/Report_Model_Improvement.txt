@@ -1,0 +1,434 @@
+================================================================================
+        MODEL IMPROVEMENT REPORT - 7 CONTROLLED EXPERIMENTS
+                  5G IDS Project / UNSW-NB15 (binary label)
+================================================================================
+Run date       : 2026-10-01
+Notebook       : notebooks/05_Model_Improvement.ipynb (new, does not overwrite NB 02-05)
+Source data    : reports/exp05/*.json, reports/exp05/consolidated_test_final.csv
+Environment    : Python 3.11.16, scikit-learn 1.9.1, pandas 3.0.6, numpy 2.4.6
+                 NO LightGBM/XGBoost -> HistGradientBoosting only
+                 (no extra dependency installed just to run one experiment)
+
+HELD FIXED THROUGHOUT: the cleaned 31-feature set, one-hot proto/service/state,
+the train-fit/validation/test-dev/test-final split, the label definition,
+seed 42. Each experiment changes only ONE factor.
+
+DATA DISCIPLINE: test-final is touched only ONCE, at the final evaluation
+step. Every model choice and every threshold choice is made on validation or
+test-dev.
+
+THE ONE REFERENCE POINT: "RF-A" = run 2's parameters, fit on train-fit
+(79,147 rows). The three saved models were fit on different amounts of data,
+so they cannot be directly compared with each other; RF-A brings every new
+experiment to the same condition.
+
+
+================================================================================
+1. BASELINE VERIFICATION
+================================================================================
+Reproducible. Reloading the three saved models and re-measuring on test-final:
+
+                  Accuracy Precision Recall    F1     FPR   PR-AUC
+  Run 1 @0.500     0.8156   0.6773  0.9491  0.7905  0.2616  0.9264
+  Run 2 @0.515     0.8287   0.6965  0.9438  0.8015  0.2379  0.9420
+  Run 3 @0.711     0.8820   0.8251  0.8605  0.8424  0.1055  0.9416
+
+  Largest deviation from previously reported figures: 5 x 10^-5. Every number
+  in the earlier report is correct.
+
+The secondary claims are also verified:
+  - Permutation importance: ackdat = 0.0501, sbytes = 0.0257  -> CORRECT (exact match)
+  - CV PR-AUC on train-fit = 0.9830 (std 0.0015)               -> CORRECT (~0.982-0.983)
+  - Fuzzers accounts for ~81% of False Negatives                -> CORRECT (82.8%)
+  - Split sizes: 79,147 / 19,787 / 25,283 / 25,284              -> CORRECT
+  - Attack ratio: train 0.4964 / test 0.3665                    -> CORRECT
+
+
+================================================================================
+2. SUMMARY TABLE (test-final, touched once)
+================================================================================
+Features: 31 columns -> 183 columns after one-hot (ablation branch: 39 -> 191).
+Shared RF parameters: n_estimators=300, max_depth=20, max_features=0.5,
+max_samples=0.7, min_samples_leaf=1, class_weight=None, random_state=42.
+HistGradientBoosting: max_iter=500 (early stopping halted at 288), learning_rate=0.1,
+max_leaf_nodes=31, min_samples_leaf=20, validation_fraction=0.1, random_state=42.
+
+  Configuration                           Threshold PR-AUC  Acc.   Prec.  Recall   F1    FPR
+  -------------------------------------- ------ ------ ------ ------ ------ ------ ------
+  RF-A binary (baseline)                  0.500  0.9414 0.8186 0.6813 0.9491 0.7932 0.2569
+  HGB boosting                            0.500  0.9417 0.8231 0.6878 0.9473 0.7970 0.2487
+  RF multiclass (1-P(Normal))             0.500  0.9427 0.8270 0.6945 0.9424 0.7997 0.2398
+  [ablation] RF 39 features (leaky)       0.500  0.9527 0.8345 0.6969 0.9708 0.8113 0.2443
+  -------------------------------------- ------ ------ ------ ------ ------ ------ ------
+  RF-A @FPR<=10%                          0.6949 0.9414 0.8825 0.8259 0.8607 0.8430 0.1050
+  HGB @FPR<=10%                           0.7244 0.9417 0.8787 0.8203 0.8569 0.8382 0.1086
+  RF multiclass @FPR<=10%  <-- SELECTED   0.6859 0.9427 0.8846 0.8259 0.8682 0.8465 0.1059
+  [ablation] 39 features @FPR<=10%        0.7309 0.9527 0.8951 0.8305 0.8968 0.8624 0.1059
+  -------------------------------------- ------ ------ ------ ------ ------ ------ ------
+  Run 1 (historical)                      0.500  0.9264 0.8156 0.6773 0.9491 0.7905 0.2616
+  Run 2 (historical)                      0.515  0.9420 0.8287 0.6965 0.9438 0.8015 0.2379
+  Run 3 (historical)                      0.711  0.9416 0.8820 0.8251 0.8605 0.8424 0.1055
+
+  Confusion matrix of the selected configuration (RF multiclass @0.6859):
+      TN 14,321   FP 1,696   FN 1,221   TP 8,046
+
+  PR-AUC with 95% CI on test-final:
+      RF-A           0.9414  [0.9384 ; 0.9446]
+      HGB            0.9417  [0.9387 ; 0.9449]
+      RF multiclass  0.9427  [0.9394 ; 0.9463]
+      [ablation] 39  0.9527  [0.9498 ; 0.9556]
+
+
+================================================================================
+3. STATISTICAL SIGNIFICANCE (Experiment 1)
+================================================================================
+1,000 bootstrap resamples on test-final. Since every model uses the SAME rows,
+resampling is done IN PAIRS and the distribution of the DIFFERENCE is taken -
+comparing two disjoint confidence intervals would be incorrect.
+
+  PR-AUC difference                   Mean        95% CI             Conclusion
+  ---------------------------------- ----------- ------------------ -------------
+  run 2 - run 1                       +0.01558   [+0.0135; +0.0179] SIGNIFICANT
+  run 3 - run 2                       -0.00035   [-0.0010; +0.0003] NOT significant
+  multiclass - RF-A (test-dev)        +0.00245   [+0.0014; +0.0035] SIGNIFICANT
+  multiclass - RF-A (test-final)      +0.00132   [+0.0001; +0.0025] significant, but borderline
+  HGB - RF-A (test-final)             +0.00027   [-0.0012; +0.0016] NOT significant
+  39 features - 31 features           +0.01124   [+0.0092; +0.0133] SIGNIFICANT
+
+THE MOST IMPORTANT ISOLATION TEST - the same run 3 model, cut at run 2's threshold:
+
+  run 3 @0.500  -  run 2 @0.515      Diff      95% CI              p
+  ---------------------------------- --------- ------------------- -----
+  Accuracy                           +0.00023  [-0.0016; +0.0021]  0.844
+  Precision                          +0.00104  [-0.0014; +0.0035]  0.430
+  F1                                 -0.00021  [-0.0022; +0.0017]  0.860
+  PR-AUC                             -0.00035  [-0.0010; +0.0003]  0.272
+
+  => At the SAME operating point, run 3 is indistinguishable from run 2 on
+     ANY metric. The entire +5.3 points of Accuracy and +12.9 points of
+     Precision in run 3 comes from moving the threshold 0.515 -> 0.711, not
+     from the model.
+
+  Note: run 3's ROC-AUC is lower than run 2's by a very small but measurable
+  amount (-0.0005, p=0.01) - consistent with isotonic creating flat segments
+  and being fit on 20% less data. No advantage on the model side.
+
+
+================================================================================
+4. ABLATION OF 8 LEAKY FEATURES (Experiment 2)
+================================================================================
+METHOD USED TO PRESERVE THE CONTROL: the surviving row set is decided within
+the 31-feature space EXACTLY as notebook 01 does (remove duplicates + remove
+contradictions), and only then are the other 8 columns attached to those rows.
+Verified by assert: branch A EXACTLY MATCHES the official cleaned set
+(98,934 x 33 and 50,567 x 33, value-by-value comparison). If it didn't match,
+the two branches would differ in more than just 8 columns and the ablation
+would lose its meaning.
+
+  Branch                        PR-AUC  ROC-AUC  Acc.   Prec.  Recall   F1    FPR
+  ---------------------------- ------ -------- ------ ------ ------ ------ ------
+  A: 31 features (official)     0.9414  0.9594  0.8186 0.6813 0.9491 0.7932 0.2569
+  B: 39 features (+8 leaky)     0.9527  0.9690  0.8345 0.6969 0.9708 0.8113 0.2443
+
+  Confusion matrix: A -> TN 11,903 FP 4,114 FN 472 TP 8,795
+                     B -> TN 12,104 FP 3,913 FN 271 TP 8,996
+
+  Difference B - A: PR-AUC +0.0112 [+0.0092; +0.0133]; ROC-AUC +0.0096; Recall +0.0217;
+              FPR -0.0125. All statistically significant.
+
+Permutation importance (validation, average_precision):
+  Branch A: ackdat 0.0501 | sbytes 0.0257 | dload 0.0202 | dbytes 0.0125 | smean 0.0114
+  Branch B: sttl 0.1798 | ct_srv_dst 0.0071 | dbytes 0.0071 | ct_dst_src_ltm 0.0065
+           | ct_state_ttl 0.0063 | sbytes 0.0061
+
+  => WHEN sttl IS PRESENT, it dominates every other feature (0.1798 - 3.6
+     times the strongest feature in branch A) and ackdat DISAPPEARS from the
+     top 10. This is direct evidence for the review's hypothesis #6: removing
+     the leaky features is exactly what pushed the model to rely on the
+     TCP-handshake-timing feature group.
+
+DIFFERS FROM THE REVIEW: the review expected to reproduce the "~0.1 AUROC"
+drop reported by D'hooge. This was NOT reproduced. The real gap is only
+0.0096 ROC-AUC (0.9594 -> 0.9690), an order of magnitude smaller. Plausible
+explanation: the team removed duplicate and contradictory rows (D'hooge did
+not do this step), and measured on the official test set rather than internal
+CV. Whatever the reason, the 0.1 figure can no longer be cited as a
+justification.
+
+CONCLUSION: those 8 features are worth ~0.011 PR-AUC. This is smaller than
+the improvement from parameter tuning in run 2 (+0.0156). They are NOT
+brought back into the official model - branch B exists only within this
+notebook, data/cleaned is left untouched.
+
+
+================================================================================
+5. TRAIN/TEST DISTRIBUTION SHIFT (Experiment 5)
+================================================================================
+The CV/test gap is confirmed:
+    CV 5-fold PR-AUC on train-fit : 0.9830 (std 0.0015; folds 0.9802-0.9844)
+    PR-AUC on test-final          : 0.9414
+    Gap                           : 0.0416  -- 28 times the CV standard deviation
+
+KS statistics, train vs test, 28 numeric features - top 10 most shifted:
+
+  Feature   KS (all)    KS (Normal only)  Median train    Median test
+  --------- ----------- ---------------- --------------- --------------
+  ackdat       0.0984        0.2698          0.0002          0.0288
+  dbytes       0.0806        0.1904        678              354
+  dmean        0.0779        0.2061         80               66
+  dloss        0.0669        0.1669          2                1
+  dload        0.0654        0.2391       9923.36          6970.80
+  sbytes       0.0639        0.1316       1012              978
+  spkts        0.0635        0.1374         10               10
+  dpkts        0.0614        0.1604          8                8
+  tcprtt       0.0603        0.2258          0.0009          0.0530
+  synack       0.0590        0.2250          0.0007          0.0100
+
+  Shift rank of features the review names (out of 28 features):
+    ackdat #1 | sbytes #6 | tcprtt #9 | synack #10 | sinpkt #13 | sload #16 | dur #17
+
+  => ackdat is the MOST SHIFTED feature in the entire feature set, AND
+     simultaneously the model's MOST IMPORTANT feature (perm 0.0501). Its
+     median changes 144-fold (0.0002 -> 0.0288). tcprtt changes 59-fold.
+     The review's hypotheses 1, 5, and 7 are confirmed with numbers.
+
+  The shift is much stronger when looking only at Normal traffic
+  (KS 0.2698 vs 0.0984) - i.e., the shift is concentrated mostly on the
+  Normal class, exactly as the earlier report stated.
+
+Categorical variables (total variation distance): service 0.0720 | proto
+0.0220 | state 0.0152 (2 of state's levels only exist in test). Much smaller
+shift than the numeric feature group.
+
+Class ratio: train-fit 0.4964 / validation 0.4964 / test-dev 0.3665 /
+test-final 0.3665.
+
+Adversarial validation (distinguishing train rows from test rows using only
+features; 0.50 means indistinguishable):
+    Overall AUC    0.8012
+    Normal only AUC 0.8722   <- the strongest shift
+    Attack only AUC 0.6689
+
+The rule "slow TCP handshake => Attack" (tcprtt > 0.01 s):
+                     % Normal slow  % Attack slow  P(Attack|slow)  Attack:Normal
+      train              0.1899        0.7748         0.8009           4.02
+      test               0.4128        0.7492         0.5122           1.05
+
+  => P(Attack | slow) changes from 0.80 down to 0.51. This is CONCEPT SHIFT
+     (the label-feature relationship changes), not pure covariate shift -
+     which explains why importance weighting in notebook 03's steps 5a/5b
+     failed.
+
+CONCLUSION: the distribution shift is REAL, measured four independent ways,
+and concentrated exactly on the feature group the model relies on most.
+However, to be precise: these experiments PROVE THE EXISTENCE of the
+distribution shift and its overlap with the important feature group - they
+do NOT prove a causal relationship with the specific performance level on
+test.
+
+
+================================================================================
+6. FUZZERS (Experiment 6)
+================================================================================
+Claim confirmed. False Negative breakdown on test-final (RF-A):
+
+  Threshold 0.50 - total FN = 472     Threshold 0.711 - total FN = 1,364
+    Fuzzers         391  (82.8%)       Fuzzers        1,039  (76.2%)
+    Exploits         49  (10.4%)       Exploits         187  (13.7%)
+    DoS              10  ( 2.1%)       DoS               45  ( 3.3%)
+    Shellcode         9  ( 1.9%)       Shellcode         42  ( 3.1%)
+    remainder        13  ( 2.8%)       remainder         51  ( 3.7%)
+
+  Recall Fuzzers: 0.8237 @0.50 -> 0.5316 @0.711. When the threshold is raised
+  to cut false alarms, Fuzzers is the category that suffers the most.
+
+MECHANISM - the model does NOT misjudge Fuzzers, it is UNDECIDED about it:
+
+  P(Attack) percentile   Normal   Fuzzers   Attack minus Fuzzers
+    q10                 0.0000   0.4173         0.8548
+    q50                 0.0000   0.7378         0.9958
+    q90                 0.7042   0.9933         1.0000
+    mean                0.2331   0.7199         0.9546
+    % with P < 0.5      74.3%    17.6%           1.2%
+
+  Fuzzers sits BETWEEN the two groups on the probability scale. Its median
+  is 0.74 - above 0.5 but below 0.711. That's why it survives at low
+  thresholds and gets wiped out in bulk at high thresholds.
+
+CORRECTING A MISCONCEPTION: the earlier report explained that "Fuzzers'
+network flow most resembles normal traffic." Measured directly, this is NOT
+quite right - Fuzzers' mean KS versus Normal is 0.2191, HIGHER than other
+attack types (0.1766). This means, feature by feature, Fuzzers is not closer
+to Normal.
+
+What actually happens: Fuzzers LACKS exactly the features that help separate
+other attacks from Normal. The largest gaps in separability are in:
+    ct_src_ltm (0.266 vs. 0.181) | trans_depth (0.120 vs. 0.074)
+    ct_flw_http_mthd (0.120 vs. 0.074) | sbytes (0.196 vs. 0.164)
+And the service composition: 88.6% of Fuzzers falls under service = '-'
+(unidentified), versus 71.7% for Normal and 50.8% for other attacks; only
+6.3% of Fuzzers goes through http versus 28.3% for other attacks. The
+http/connection-count feature group is almost unusable for Fuzzers, so the
+model has to rely on a weaker signal.
+
+
+================================================================================
+7. MULTICLASS (Experiment 3)
+================================================================================
+RF multiclass on attack_cat (attack_cat is NEVER used as an input feature),
+with the binary score derived as P(Attack) = 1 - P(Normal).
+
+Multiclass quality on test-final: accuracy 0.7628 | macro F1 0.5242 |
+weighted F1 0.7818. By class (precision / recall / F1):
+    Normal         0.9455 / 0.8118 / 0.8736     Exploits   0.7356 / 0.8495 / 0.7885
+    Reconnaissance 0.8214 / 0.7604 / 0.7897     Generic    0.9601 / 0.6056 / 0.7427
+    Shellcode      0.4638 / 0.5189 / 0.4898     Worms      0.7273 / 0.3636 / 0.4848
+    Fuzzers        0.3255 / 0.6298 / 0.4292     DoS        0.5452 / 0.2086 / 0.3017
+    Backdoor       0.1161 / 0.3476 / 0.1740     Analysis   0.1354 / 0.2207 / 0.1679
+
+  The multiclass problem is HARD on its own: 547 real Fuzzers get called
+  Normal, and conversely 2,545 real Normal get called Fuzzers. The two
+  classes bleed into each other in both directions.
+
+But for the BINARY task, there is a small, consistent improvement:
+    PR-AUC test-dev   : 0.9453 vs 0.9429  (+0.00245, CI [+0.0014; +0.0035])
+    PR-AUC test-final : 0.9427 vs 0.9414  (+0.00132, CI [+0.0001; +0.0025], p=0.046)
+
+  Robustness check across seeds (same split, only the forest's random_state
+  changes):
+    seed 42   : +0.00241      seed 7 : +0.00213      seed 2024 : +0.00232
+    Multiclass wins 3/3 seeds. The binary model's own noise spread across
+    seeds is only 0.00024 - about 10 times smaller than the effect. So this
+    is a REAL improvement, though SMALL.
+
+On Fuzzers - a two-sided result, must be stated clearly:
+    At threshold 0.50           : Recall Fuzzers 0.7998 (multiclass) vs 0.8237 (binary) -> WORSE
+    At the FPR<=10% operating point: Recall Fuzzers 0.5676 (multiclass) vs 0.5496 (binary) -> BETTER
+  Multiclass does not "solve" Fuzzers. It only ranks slightly better in the
+  high-probability region, which is where the real operating point sits.
+
+DIFFERS FROM THE REVIEW: the earlier plan expected multiclass to give
++0.005 to +0.02 PR-AUC. In reality it's only +0.0013 on test-final, about
+4 times below the lower bound of that expectation.
+
+
+================================================================================
+8. BOOSTING (Experiment 4)
+================================================================================
+HistGradientBoosting, same features / split / preprocessing / labels /
+protocol. Early stopping halts at round 288 of 500. Fit time: 7 seconds
+(versus 51 seconds for Random Forest with 300 trees).
+
+    PR-AUC test-dev   : 0.9433 vs 0.9429  (+0.00039, CI [-0.0010; +0.0018], p=0.594)
+    PR-AUC test-final : 0.9417 vs 0.9414  (+0.00027, CI [-0.0012; +0.0016], p=0.688)
+
+CONCLUSION: NO improvement. Random Forest is NOT the bottleneck of this
+problem. Two algorithm families with entirely different mechanisms arrive at
+the same performance level - strong evidence that the current ceiling lies
+in the DATA/FEATURES, not the algorithm.
+
+DIFFERS FROM THE REVIEW: the earlier plan expected boosting to give +0.005
+to +0.015 PR-AUC. Not reproduced; the real figure is +0.0003 and not
+statistically significant.
+
+Scope note: only ONE reasonable configuration was tried, no wide
+hyperparameter search (as required). This doesn't rule out a thoroughly
+tuned boosting configuration doing slightly better, but a gap this close to
+zero suggests that's unlikely.
+
+
+================================================================================
+9. OPERATING THRESHOLD (Experiment 7)
+================================================================================
+Two SEPARATE steps, neither touching test-final:
+  Step 1 - select the model : highest PR-AUC on test-dev -> RF multiclass (0.9453)
+  Step 2 - select the threshold: highest Recall among thresholds satisfying
+                        FPR <= 0.10 on test-dev -> threshold 0.6859
+
+test-final is then touched once:
+
+    Threshold   : 0.6859  (chosen on test-dev)
+    Precision   : 0.8259
+    Recall      : 0.8682
+    F1          : 0.8465
+    FPR         : 0.1059
+    Accuracy    : 0.8846
+    Matrix      : TN 14,321   FP 1,696   FN 1,221   TP 8,046
+
+  FPR on test-final (0.1059) slightly exceeds the 0.10 constraint because the
+  threshold was chosen on test-dev. This is normal out-of-sample
+  generalization error from threshold selection, and must be reported as-is,
+  not re-adjusted using test-final.
+
+  Versus the baseline under the same constraint: RF-A @0.6949 gives Recall
+  0.8607 / FPR 0.1050. Multiclass catches 70 more attacks with almost no
+  change in false alarms.
+
+Recall by attack type at the operating point (test-final):
+    Analysis 1.0000 | Backdoor 0.9939 | Reconnaissance 0.9779 | Generic 0.9748
+    Exploits 0.9616 | DoS 0.9583 | Worms 0.9545 | Shellcode 0.8000 | Fuzzers 0.5676
+
+  Fuzzers remains the only unresolved weakness.
+
+
+================================================================================
+10. CONCLUSION
+================================================================================
+
+GENUINE MODEL IMPROVEMENT (statistically tested)
+  - Run 1 -> run 2: +0.0156 PR-AUC, CI [+0.0135; +0.0179]. A real, already-
+    known improvement.
+  - Multiclass by attack_cat: +0.0013 PR-AUC on test-final (CI [+0.0001;
+    +0.0025]), +0.0023 on test-dev, wins 3/3 seeds. This is a REAL but VERY
+    SMALL improvement - borderline significant on test-final, and only
+    solid thanks to test-dev plus the seed check. Should not be presented as
+    a major step forward.
+
+JUST A SHIFT IN OPERATING POINT, NOT A MODEL IMPROVEMENT
+  - Run 2 -> run 3: at the same threshold, the two models are
+    indistinguishable on any metric (p from 0.27 to 0.86). The entire
+    Accuracy/Precision gain comes from the threshold.
+  - Every Accuracy gain in this report that comes from moving a threshold
+    must be read this way.
+
+NOT STATISTICALLY SIGNIFICANT
+  - HistGradientBoosting vs. Random Forest: +0.0003, CI contains 0. The
+    algorithm is not the bottleneck.
+
+UNRESOLVED ISSUES
+  - Distribution shift: CV 0.9830 vs. test 0.9414. No experiment in this
+    round narrows that gap.
+  - Fuzzers: still accounts for 76-83% of False Negatives in every
+    configuration tried. Multiclass only raises Recall Fuzzers from 0.5496
+    to 0.5676 at the operating point.
+  - The 8 leaky features are worth +0.011 PR-AUC but are not used. This cost
+    is smaller than the ~0.1 AUROC figure the review cited.
+
+WHAT CANNOT BE CONCLUDED FROM THIS ROUND
+  - Cannot conclude that distribution shift IS THE CAUSE of the specific
+    performance level on test. The measurements only show that the
+    distribution shift exists and overlaps with the most important feature
+    group.
+  - Cannot conclude that boosting in general doesn't help - only one
+    configuration was tried.
+  - The selected configuration (multiclass) beats the baseline by too little
+    to call it a "better new model" in a practical sense; if simplicity is
+    preferred, keeping the binary RF is a reasonable choice.
+
+================================================================================
+DATA SOURCES
+================================================================================
+  notebooks/05_Model_Improvement.ipynb        (all code, run sequentially)
+  reports/exp05/step0_baseline.json           (baseline verification)
+  reports/exp05/step1_bootstrap.json          (experiment 1)
+  reports/exp05/step2_ablation.json           (experiment 2)
+  reports/exp05/step5_shift.json              (experiment 5)
+  reports/exp05/step6_fuzzers.json            (experiment 6)
+  reports/exp05/step34_models.json            (experiments 3 and 4)
+  reports/exp05/step7_final.json              (experiment 7)
+  reports/exp05/step8_seeds.json              (seed robustness check)
+  reports/exp05/consolidated_test_final.csv   (summary table)
+
+  data/cleaned/ was NOT modified. The earlier notebooks 01-05 were NOT
+  overwritten.
+================================================================================

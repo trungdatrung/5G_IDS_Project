@@ -1,7 +1,7 @@
 ﻿{
  "A_roundtrip_unsw_test_final": {
   "goc@0.5": {
-   "nguong": 0.5,
+   "threshold": 0.5,
    "n": 25284,
    "pi": 0.3665,
    "roc_auc": 0.9594,
@@ -18,7 +18,7 @@
    "TP": 8795
   },
   "xap_xi@0.5": {
-   "nguong": 0.5,
+   "threshold": 0.5,
    "n": 25284,
    "pi": 0.3665,
    "roc_auc": 0.9525,
@@ -35,7 +35,7 @@
    "TP": 8840
   },
   "goc@dev": {
-   "nguong": 0.6949,
+   "threshold": 0.6949,
    "n": 25284,
    "pi": 0.3665,
    "roc_auc": 0.9594,
@@ -52,7 +52,7 @@
    "TP": 7976
   },
   "xap_xi@dev": {
-   "nguong": 0.6949,
+   "threshold": 0.6949,
    "n": 25284,
    "pi": 0.3665,
    "roc_auc": 0.9525,
@@ -71,7 +71,7 @@
  },
  "B_5gnidd_chinh": {
   "@0.5": {
-   "nguong": 0.5,
+   "threshold": 0.5,
    "n": 379563,
    "pi": 0.8333,
    "roc_auc": 0.399,
@@ -88,7 +88,7 @@
    "TP": 159158
   },
   "@0.6949": {
-   "nguong": 0.6949,
+   "threshold": 0.6949,
    "n": 379563,
    "pi": 0.8333,
    "roc_auc": 0.399,
@@ -105,7 +105,7 @@
    "TP": 37964
   },
   "EM_prior@0.5": {
-   "nguong": 0.5,
+   "threshold": 0.5,
    "n": 379563,
    "pi": 0.8333,
    "roc_auc": 0.399,
@@ -123,7 +123,7 @@
   },
   "pi_em": 0.8311,
   "BS1@0.5": {
-   "nguong": 0.5,
+   "threshold": 0.5,
    "n": 208021,
    "pi": 0.8064,
    "roc_auc": 0.4254,
@@ -140,7 +140,7 @@
    "TP": 82390
   },
   "BS2@0.5": {
-   "nguong": 0.5,
+   "threshold": 0.5,
    "n": 171542,
    "pi": 0.8658,
    "roc_auc": 0.3537,
@@ -156,8 +156,8 @@
    "FN": 71758,
    "TP": 76768
   },
-  "nguong_tu_BS1->BS2": {
-   "nguong": 1.0,
+  "threshold_from_BS1->BS2": {
+   "threshold": 1.0,
    "n": 171542,
    "pi": 0.8658,
    "roc_auc": 0.3537,
@@ -173,8 +173,8 @@
    "FN": 148526,
    "TP": 0
   },
-  "nguong_tu_BS2->BS1": {
-   "nguong": 1.0,
+  "threshold_from_BS2->BS1": {
+   "threshold": 1.0,
    "n": 208021,
    "pi": 0.8064,
    "roc_auc": 0.4254,
@@ -190,7 +190,7 @@
    "FN": 167754,
    "TP": 0
   },
-  "recall_theo_loai@0.5": {
+  "recall_by_category@0.5": {
    "Benign": 0.611,
    "HTTPFlood": 0.6937,
    "ICMPFlood": 0.0,
@@ -201,7 +201,7 @@
    "UDPFlood": 0.003,
    "UDPScan": 0.4007
   },
-  "recall_theo_loai@0.6949": {
+  "recall_by_category@0.6949": {
    "Benign": 0.4067,
    "HTTPFlood": 0.2454,
    "ICMPFlood": 0.0,
@@ -212,7 +212,7 @@
    "UDPFlood": 0.0,
    "UDPScan": 0.3305
   },
-  "recall_theo_loai@nguong_BS1": {
+  "recall_by_category@threshold_BS1": {
    "Benign": 0.0,
    "HTTPFlood": 0.0,
    "ICMPFlood": 0.0,
@@ -223,7 +223,7 @@
    "UDPFlood": 0.0,
    "UDPScan": 0.0
   },
-  "FPR_benign_theo_proto@0.5": {
+  "FPR_benign_by_proto@0.5": {
    "arp": {
     "n": 37,
     "fpr": 0.0
@@ -257,7 +257,7 @@
     "fpr": 0.7824
    }
   },
-  "FPR_benign_tcp_theo_ackdat@0.5": {
+  "FPR_benign_tcp_by_ackdat@0.5": {
    "0": 0.0647,
    "10-50ms": 0.7152,
    ">50ms": 0.8626
@@ -265,7 +265,7 @@
  },
  "C_anh_xa_tho": {
   "@0.5": {
-   "nguong": 0.5,
+   "threshold": 0.5,
    "n": 379563,
    "pi": 0.8333,
    "roc_auc": 0.3516,
@@ -282,7 +282,7 @@
    "TP": 157679
   },
   "@0.6949": {
-   "nguong": 0.6949,
+   "threshold": 0.6949,
    "n": 379563,
    "pi": 0.8333,
    "roc_auc": 0.3516,
@@ -299,9 +299,9 @@
    "TP": 27738
   }
  },
- "D_nhan_cong_bo_khong_khu_trung": {
+ "D_published_labels_no_dedup": {
   "@0.5": {
-   "nguong": 0.5,
+   "threshold": 0.5,
    "n": 1215890,
    "pi": 0.6071,
    "roc_auc": 0.3996,
@@ -321,7 +321,7 @@
    "ty_le_model_bao_Attack@0.5": 0.5029
   }
  },
- "F_chan_doan": {
+ "F_diagnosis": {
   "roc_auc_mau": 0.2956,
   "theo_feature": [
    {
@@ -511,7 +511,7 @@
     "delta_roc_auc": -0.0887
    }
   ],
-  "ct_ca_hai_bang_1": 0.2667
+  "ct_both_set_to_1": 0.2667
  }
 }
               feature       loai    UNSW_Normal_q50/q90    UNSW_Attack_q50/q90      5G_Benign_q50/q90      5G_Attack_q50/q90  KS_Normal_UNSW_vs_Benign_5G  KS_Attack_UNSW_vs_Attack_5G  ty_le_5G_ngoai_khoang_UNSW                                                    UNSW_top                                                     5G_top  ty_le_5G_gia_tri_chua_gap_trong_UNSW
