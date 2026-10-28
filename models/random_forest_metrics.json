@@ -1,0 +1,15 @@
+{
+  "accuracy": 0.817569,
+  "precision": 0.680724,
+  "recall": 0.94588,
+  "f1": 0.79169,
+  "confusion_matrix": {
+    "tn": 23812,
+    "fp": 8222,
+    "fn": 1003,
+    "tp": 17530
+  },
+  "n_train": 98934,
+  "n_test": 50567,
+  "n_features": 31
+}

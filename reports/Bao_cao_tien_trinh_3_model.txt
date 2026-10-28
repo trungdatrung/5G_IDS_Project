@@ -1,0 +1,506 @@
+================================================================================
+     BÁO CÁO TIẾN TRÌNH 3 MODEL - TỪNG MODEL SAU THAY ĐỔI GÌ SO VỚI TRƯỚC
+                   Dự án 5G IDS / UNSW-NB15 (nhãn nhị phân)
+================================================================================
+Ngày chạy        : 01/10/2026
+Phạm vi          : notebooks/02_Model_Training.ipynb      (model lần 1)
+                   notebooks/03_Model_Training_v2.ipynb   (model lần 2)
+                   notebooks/04_Precision_Improvement.ipynb (model lần 3)
+Số liệu gốc      : models/random_forest_metrics.json
+                   models/random_forest_v2_metrics.json
+                   models/random_forest_v3_metrics.json
+                   notebooks/model_comparison_results.csv
+Hình             : reports/confusion_matrices.png
+Lưu ý            : TOÀN BỘ số trong báo cáo này lấy từ lần chạy ngày 01/10/2026
+                   (artifact trong models/ có mốc thời gian 12:00 - 13:13).
+                   Không chạy lại model nào để viết báo cáo này.
+
+
+TÓM TẮT
+--------------------------------------------------------------------------------
+Cả 3 model đều là Random Forest, cùng feature, cùng tiền xử lý. Khác nhau ở
+hai thứ: (a) tham số rừng, (b) ngưỡng quyết định.
+
+Trên tập đánh giá chung test-final (25.284 dòng), quy tắc chung P(Attack) >= ngưỡng:
+
+                       Accuracy  Precision  Recall    F1      FPR
+  Lần 1 (NB02)          0,8156    0,6773    0,9491  0,7905  26,2%
+  Lần 2 (NB03)          0,8287    0,6965    0,9438  0,8015  23,8%
+  Lần 3 (NB04)          0,8820    0,8251    0,8605  0,8424  10,6%
+
+  Lần 1 -> Lần 2 : +1,3 điểm Accuracy, +1,9 Precision, -0,5 Recall, +1,1 F1
+  Lần 2 -> Lần 3 : +5,3 điểm Accuracy, +12,9 Precision, -8,3 Recall, +4,1 F1
+
+Nhưng bản chất hai bước cải tiến KHÁC HẲN nhau:
+
+  * Lần 1 -> Lần 2 là cải thiện THẬT về chất lượng model: PR-AUC tăng
+    0,9264 -> 0,9420, ROC-AUC tăng 0,9548 -> 0,9600. Model xếp hạng rủi ro
+    tốt hơn. Mức tăng nhỏ nhưng là thật.
+
+  * Lần 2 -> Lần 3 KHÔNG cải thiện khả năng xếp hạng: PR-AUC 0,9420 -> 0,9416,
+    ROC-AUC 0,9600 -> 0,9595 (bằng nhau trong sai số). Toàn bộ chênh lệch chỉ
+    tới từ việc DỜI NGƯỠNG 0,515 -> 0,711 trên cùng một đường ROC. Đây là đổi
+    điểm vận hành, không phải model tốt hơn.
+
+  * Thêm nữa: ngưỡng của lần 3 được chọn bằng test-dev (nửa tập test CÓ NHÃN).
+    Cấu hình đối chứng C_val - cùng model lần 3 nhưng ngưỡng chọn trên
+    validation của train - chỉ đạt F1 0,7884 trên test-final, THẤP HƠN lần 2.
+    Nghĩa là lợi thế của lần 3 phần lớn đến từ việc được nhìn phân bố test,
+    chứ không phải từ calibration.
+
+
+================================================================================
+PHẦN 0. CƠ SỞ SO SÁNH - ĐỌC TRƯỚC KHI XEM SỐ
+================================================================================
+
+0.1 Dữ liệu (giống nhau cho cả 3 model)
+--------------------------------------------------------------------------------
+  Train đã làm sạch : 98.934 dòng - 49.825 Normal / 49.109 Attack (49,64% Attack)
+  Test  đã làm sạch : 50.567 dòng - 32.034 Normal / 18.533 Attack (36,65% Attack)
+  Feature           : 31 (28 số + proto/service/state) -> 183 cột sau one-hot
+  Đã loại           : id, 8 feature ô nhiễm, 3 feature không phân biệt, attack_cat
+
+  LỆCH TỶ LỆ LỚP: tỷ lệ Attack thô trước khi làm sạch là 68,06% (train) và
+  55,06% (test). Sau bước bỏ trùng + bỏ dòng mâu thuẫn còn 49,64% và 36,65%.
+  Tức là chính bước làm sạch tạo ra khoảng lệch 13 điểm giữa train và test.
+  Điều này ảnh hưởng trực tiếp tới Precision của MỌI model (xem Phần 4.1).
+
+  LỆCH PHÂN BỐ FEATURE: adversarial AUC train-vs-test = 0,8040 (0,5 = không
+  phân biệt được). Chỉ nhìn feature đã đoán được dòng thuộc train hay test.
+
+0.2 Ba tập đánh giá xuất hiện trong dự án
+--------------------------------------------------------------------------------
+  validation : 19.787 dòng = 20% train      -> phân bố TRAIN
+  test-dev   : 25.283 dòng = 50% test       -> phân bố TEST, lần 3 dùng chọn ngưỡng
+  test-final : 25.284 dòng = 50% test còn lại -> KHÔNG model nào dùng để quyết định
+
+  => test-final là tập DUY NHẤT công bằng cho cả 3 model. Bảng chính dùng tập này.
+
+0.3 Quy tắc quyết định
+--------------------------------------------------------------------------------
+  Báo cáo này dùng chung: Attack nếu P(Attack) >= ngưỡng.
+  Notebook 02 tự báo cáo bằng predict() (argmax, hoà về Normal). Chênh lệch nhỏ,
+  chỉ ảnh hưởng lần 1 (286/50.567 dòng có P đúng bằng 0,5):
+      argmax : Accuracy 0,8186 / Precision 0,6820 / Recall 0,9462 / F1 0,7927
+      >= 0,5 : Accuracy 0,8156 / Precision 0,6773 / Recall 0,9491 / F1 0,7905
+  Lần 2 có 0 dòng hoà, lần 3 có 6 dòng -> không bị ảnh hưởng.
+
+
+================================================================================
+PHẦN 1. BẢNG TỔNG HỢP 3 MODEL
+================================================================================
+
+1.1 Cấu hình
+--------------------------------------------------------------------------------
+                        LẦN 1 (NB02)    LẦN 2 (NB03)     LẦN 3 (NB04)
+  n_estimators             100              300              300
+  max_depth               None               20               20
+  max_features           'sqrt' (~13)       0,5 (~91)        0,5 (~91)
+  max_samples             None              0,7              0,7
+  min_samples_leaf           1                1                1
+  min_samples_split          2                2                2
+  class_weight            None             None             None
+  criterion               gini             gini             gini
+  random_state              42               42               42
+  ---------------------------------------------------------------------------
+  Calibration             không            không      isotonic, cv=5
+  Ngưỡng                   0,5           0,515152         0,710631
+  Ngưỡng chọn bằng      cố định       CV trên train    test-dev (CÓ NHÃN)
+  Fit trên            toàn train       toàn train    train-fit (80% train)
+                       98.934 dòng      98.934 dòng      79.147 dòng
+
+1.2 Kết quả trên test-final (tập chung, 25.284 dòng)
+--------------------------------------------------------------------------------
+                      Accuracy Precision Recall    F1    FPR    ROC-AUC  PR-AUC
+  Lần 1 (NB02)         0,8156   0,6773  0,9491  0,7905  0,2616  0,9548  0,9264
+  Lần 2 (NB03)         0,8287   0,6965  0,9438  0,8015  0,2379  0,9600  0,9420
+  Lần 3 (NB04)         0,8820   0,8251  0,8605  0,8424  0,1055  0,9595  0,9416
+
+1.3 Ma trận nhầm lẫn trên test-final
+--------------------------------------------------------------------------------
+                          TN       FP       FN       TP
+  Lần 1 (NB02)          11.827    4.190     472    8.795
+  Lần 2 (NB03)          12.206    3.811     521    8.746
+  Lần 3 (NB04)          14.327    1.690   1.293    7.974
+
+
+================================================================================
+PHẦN 2. LẦN 1 -> LẦN 2: ĐÃ THAY ĐỔI GÌ
+================================================================================
+
+2.1 Thay đổi về mặt kỹ thuật
+--------------------------------------------------------------------------------
+  (1) Thêm tập validation: tách 20% train (stratified, random_state=42) và bật
+      oob_score để ĐO được overfit - lần 1 hoàn toàn không có cơ chế này.
+  (2) Tìm tham số bằng RandomizedSearchCV: n_iter=30, cv=5 (StratifiedKFold),
+      scoring='average_precision' (PR-AUC), CHỈ chạy trên phần train-fit.
+      Không gian tìm theo Probst et al. (2019).
+  (3) Chọn ngưỡng bằng TunedThresholdClassifierCV (tối ưu F1), CV bên trong train.
+  (4) Tham số đổi: 100 -> 300 cây; max_depth None -> 20; max_features
+      'sqrt' -> 0,5; thêm max_samples=0,7.
+  (5) Ngưỡng 0,5 -> 0,515152.
+
+2.2 Overfit đã giảm thật - đây là cải thiện rõ nhất
+--------------------------------------------------------------------------------
+  Cùng fit trên train-fit (79.147 dòng), đo trên validation (19.787 dòng):
+
+                         Accuracy trên    Accuracy trên    Khoảng chênh
+                           train-fit        validation
+  Cấu hình lần 1           1,0000           0,9268          7,3 điểm
+  Cấu hình lần 2           0,9775           0,9322          4,5 điểm
+
+  Cấu hình lần 1 đạt Accuracy = 1,0000 trên chính dữ liệu fit (TN 39.860,
+  FP 0, FN 0, TP 39.287) - thuộc lòng hoàn toàn. Nguyên nhân: max_depth=None
+  + min_samples_leaf=1 cho phép cây mọc tới khi lá thuần.
+  Ràng buộc max_depth=20 của lần 2 chặn việc này lại.
+
+  OOB accuracy  : 0,9229 -> 0,9280  (+0,5 điểm)
+  Validation acc: 0,9268 -> 0,9322  (+0,5 điểm)
+  Validation F1 : 0,9281 -> 0,9335  (+0,5 điểm)
+  Validation FPR: 0,0979 -> 0,0929  (FP 976 -> 926, ít hơn 50 trên 9.965 Normal)
+
+2.3 Kết quả trên test-final (tập chung)
+--------------------------------------------------------------------------------
+                      Lần 1     Lần 2     Chênh
+  Accuracy           0,8156    0,8287    +1,31 điểm
+  Precision          0,6773    0,6965    +1,92 điểm
+  Recall             0,9491    0,9438    -0,53 điểm
+  F1                 0,7905    0,8015    +1,10 điểm
+  FPR                0,2616    0,2379    -2,37 điểm
+  Balanced acc       0,8437    0,8529    +0,92 điểm
+  ROC-AUC            0,9548    0,9600    +0,52 điểm
+  PR-AUC             0,9264    0,9420    +1,56 điểm
+
+  Ma trận nhầm lẫn:
+                      TN       FP      FN      TP
+  Lần 1             11.827   4.190    472   8.795
+  Lần 2             12.206   3.811    521   8.746
+  Chênh              +379    -379     +49     -49
+
+  ĐỌC HIỂU: lần 2 đổi 49 cuộc tấn công bị bỏ sót thêm để lấy 379 báo động giả
+  ít hơn. Tỷ lệ đánh đổi 1:7,7 - có lợi nếu chi phí xử lý báo động giả đáng kể.
+
+2.4 Vì sao cải thiện - và vì sao chỉ nhỏ như vậy
+--------------------------------------------------------------------------------
+  CÓ cải thiện vì:
+    - ROC-AUC và PR-AUC đều tăng => model xếp hạng rủi ro tốt hơn thật, không
+      phải chỉ dời ngưỡng. Đây là khác biệt quan trọng so với bước lần 3.
+    - max_features=0,5 (~91/183 cột mỗi lần tách) làm từng cây mạnh hơn nhiều
+      so với 'sqrt' (~13 cột); 300 cây + max_samples=0,7 tăng đa dạng bootstrap
+      nên trung bình hoá tốt hơn.
+    - max_depth=20 chặn việc học thuộc nhiễu.
+
+  NHƯNG chỉ nhỏ vì:
+    - Việc tìm tham số gần như không phân biệt được các cấu hình: 10 cấu hình
+      tốt nhất có CV PR-AUC từ 0,9822 đến 0,9829, std ~0,0015. Chênh lệch nằm
+      trong nhiễu. Không có cấu hình nào thực sự vượt trội.
+    - Ngưỡng CV chỉ dời từ 0,5 lên 0,515 - gần như không đổi, vì nó được chọn
+      trên phân bố TRAIN (tỷ lệ Attack 49,6%), không phải phân bố test.
+    - Khoảng chênh validation -> test vẫn ~10 điểm Accuracy (0,9322 -> 0,8287).
+      Tinh chỉnh tham số xử lý được overfit, KHÔNG xử lý được lệch phân bố.
+      Đây là trần thật sự của bước này.
+
+
+================================================================================
+PHẦN 3. LẦN 2 -> LẦN 3: ĐÃ THAY ĐỔI GÌ
+================================================================================
+
+3.1 Thay đổi về mặt kỹ thuật
+--------------------------------------------------------------------------------
+  (1) GIỮ NGUYÊN toàn bộ tham số Random Forest của lần 2 (đọc lại từ
+      random_forest_v2_metrics.json). Không tìm tham số lại.
+  (2) Bọc model trong CalibratedClassifierCV(method='isotonic', cv=5), fit trên
+      train-fit. Isotonic = hàm đơn điệu không tham số, ánh xạ tỷ lệ phiếu của
+      rừng sang xác suất sát thực tế hơn.
+  (3) Đổi TIÊU CHÍ chọn ngưỡng: thay vì tối ưu F1, nay chọn ngưỡng cho Recall
+      cao nhất với ràng buộc FPR <= 0,10 (ràng buộc vận hành).
+  (4) Chia tập test thành test-dev / test-final. Ngưỡng chọn trên test-dev.
+  (5) Fit trên 79.147 dòng (80% train) thay vì 98.934 - ÍT dữ liệu hơn lần 2.
+
+3.2 Tách riêng ảnh hưởng của calibration và của ngưỡng
+--------------------------------------------------------------------------------
+  Đây là phần quan trọng nhất của báo cáo. Notebook 04 đo riêng từng bước
+  trên test-final:
+
+                                         Accuracy Precision Recall    F1
+  Lần 2 đã lưu @0,515                     0,8287   0,6965  0,9438  0,8015
+  A: RF (tham số lần 2, chưa calibrate) @0,5  0,8186   0,6813  0,9491  0,7932
+  B: Đã calibrate @0,5                    0,8289   0,6976  0,9413  0,8013
+  C_val: Đã calibrate @0,464              0,8122   0,6715  0,9545  0,7884
+  C_dev: Đã calibrate @0,711 (CHỌN)       0,8820   0,8251  0,8605  0,8424
+
+  Đọc bảng này:
+    - B (calibrate, ngưỡng 0,5) = 0,8289/0,6976/0,9413/0,8013
+      Lần 2 (ngưỡng 0,515)      = 0,8287/0,6965/0,9438/0,8015
+      => Ở CÙNG điểm vận hành, calibration gần như không đổi gì cả.
+    - Chênh lệch giữa B và C_dev chỉ là NGƯỠNG (0,5 -> 0,711), cùng một model.
+      => Toàn bộ +5,3 Accuracy và +12,9 Precision đến từ dời ngưỡng.
+
+  Xác nhận bằng chỉ số không phụ thuộc ngưỡng, trên test-final:
+      ROC-AUC : lần 2 = 0,9600 ; lần 3 = 0,9595
+      PR-AUC  : lần 2 = 0,9420 ; lần 3 = 0,9416
+  Hai model xếp hạng rủi ro GIỐNG NHAU. Lần 3 không phân biệt Normal/Attack
+  tốt hơn lần 2; nó chỉ cắt ở chỗ khác.
+
+3.3 Calibration có thực sự hoạt động không
+--------------------------------------------------------------------------------
+  Brier score (thấp hơn = xác suất sát thực tế hơn):
+                            validation      test-dev
+    Chưa calibrate            0,04586        0,10673
+    Đã calibrate              0,04547        0,10688
+
+  Trên validation (phân bố train): tốt lên rất ít (-0,00039).
+  Trên test-dev (phân bố test)   : XẤU ĐI rất ít (+0,00015).
+
+  KẾT LUẬN: isotonic calibration fit trên train-fit KHÔNG chuyển giao được sang
+  phân bố test. Nó học lại thang xác suất của phân bố train, mà phân bố train
+  khác phân bố test. Đây là lý do calibration một mình không cải thiện gì.
+
+3.4 Kết quả trên test-final
+--------------------------------------------------------------------------------
+                      Lần 2     Lần 3     Chênh
+  Accuracy           0,8287    0,8820    +5,34 điểm
+  Precision          0,6965    0,8251   +12,86 điểm
+  Recall             0,9438    0,8605    -8,33 điểm
+  F1                 0,8015    0,8424    +4,09 điểm
+  FPR                0,2379    0,1055   -13,24 điểm
+  Balanced acc       0,8529    0,8775    +2,46 điểm
+  ROC-AUC            0,9600    0,9595    -0,05 điểm  (bằng nhau)
+  PR-AUC             0,9420    0,9416    -0,04 điểm  (bằng nhau)
+
+  Ma trận nhầm lẫn:
+                      TN       FP      FN      TP
+  Lần 2             12.206   3.811    521   8.746
+  Lần 3             14.327   1.690  1.293   7.974
+  Chênh            +2.121  -2.121   +772    -772
+
+  ĐỌC HIỂU: lần 3 đổi 772 cuộc tấn công bị bỏ sót thêm để lấy 2.121 báo động
+  giả ít hơn. Tỷ lệ đánh đổi 1:2,7 - kém hiệu quả hơn bước lần 1 -> lần 2
+  (1:7,7), vì càng dời ngưỡng lên cao thì càng phải hy sinh nhiều TP.
+
+3.5 Vì sao dời ngưỡng lại hiệu quả đến vậy
+--------------------------------------------------------------------------------
+  Vì False Positive tập trung sát ngay trên đường biên. Đo trên test-dev:
+
+    Phân vị xác suất P(Attack) theo nhóm kết quả:
+                n       q10     q25     q50     q75     q90
+      TP      8.806    0,698   0,912   0,992   1,000   1,000
+      FP      4.207    0,526   0,566   0,648   0,763   0,877
+      TN     11.810    0,000   0,000   0,000   0,017   0,393
+      FN        460    0,254   0,323   0,404   0,459   0,488
+
+    36,3% số FP có P(Attack) trong [0,50 ; 0,60)
+    63,0% số FP có P(Attack) trong [0,50 ; 0,70)
+    chỉ  7,4% số FP có P(Attack) >= 0,90
+
+  TP có trung vị 0,992 (model rất chắc chắn), FP có trung vị 0,648 (lưỡng lự).
+  Nên nâng ngưỡng lên 0,711 cắt bỏ phần lớn FP mà chỉ mất ít TP:
+      FP: 3.811 -> 1.690  (-55,7%)
+      TP: 8.746 ->  7.974  (- 8,8%)
+
+  Bảng quét ngưỡng trên test-dev (model đã calibrate) cho thấy toàn bộ
+  đường đánh đổi:
+      Ngưỡng  Precision  Recall     F1      FPR
+       0,30     0,6062   0,9915   0,7524   0,3727
+       0,40     0,6387   0,9730   0,7712   0,3185
+       0,50     0,6954   0,9417   0,8000   0,2387
+       0,60     0,7677   0,9005   0,8288   0,1576
+       0,70     0,8266   0,8625   0,8442   0,1046
+       0,7106   0,8328   0,8594   0,8459   0,0998  <- ngưỡng được chọn
+       0,80     0,8790   0,8256   0,8515   0,0657
+       0,90     0,9442   0,7485   0,8351   0,0256
+
+  Lưu ý: F1 cao nhất trên test-dev thực ra ở ngưỡng 0,80 (0,8515), không phải
+  ở 0,7106. Ngưỡng 0,7106 được chọn vì nó là điểm Recall cao nhất còn thoả
+  FPR <= 0,10, theo đúng quy tắc đã định trước. Nghĩa là lần 3 KHÔNG tối ưu F1.
+
+3.6 Cảnh báo công bằng: lợi thế thông tin
+--------------------------------------------------------------------------------
+  Ngưỡng 0,7106 được chọn trên test-dev - dữ liệu phân bố TEST CÓ NHÃN.
+  Lần 1 và lần 2 không hề có quyền tiếp cận thông tin này.
+
+  Notebook 04 đã định trước phép đối chứng C_val: cùng model lần 3, nhưng
+  ngưỡng chọn trên validation (phân bố train, không đụng test):
+
+      Ngưỡng chọn trên validation : 0,4636
+      Ngưỡng chọn trên test-dev   : 0,7106
+
+  Hai ngưỡng cách nhau rất xa cho CÙNG một ràng buộc FPR <= 0,10. Lý do:
+  cùng một mức xác suất calibrate mang ý nghĩa khác nhau ở hai phân bố.
+
+  C_val trên test-final: Accuracy 0,8122 / Precision 0,6715 / Recall 0,9545
+                         / F1 0,7884   (TN 11.690 FP 4.327 FN 422 TP 8.845)
+
+  So với lần 2 (F1 0,8015) thì C_val THẤP HƠN.
+
+  => Nếu không được nhìn nhãn của phân bố test, model lần 3 quay về đúng mức
+     Precision của lần 1 - lần 2. Phần lớn "cải tiến" của lần 3 là lợi thế
+     thông tin, không phải lợi thế mô hình.
+
+
+================================================================================
+PHẦN 4. NGUYÊN NHÂN GỐC - VÌ SAO CẢ 3 MODEL ĐỀU CÓ PRECISION THẤP TRÊN TEST
+================================================================================
+
+4.1 Phân rã Precision
+--------------------------------------------------------------------------------
+  Precision = TPR*pi / (TPR*pi + FPR*(1-pi)) , pi = tỷ lệ Attack
+
+  Kịch bản                                      TPR     FPR     pi   Precision
+  [ĐO]   validation                            0,9577  0,0929  0,4964  0,9104
+  [TÍNH] TPR,FPR của validation + pi test-dev  0,9577  0,0929  0,3665  0,8564
+  [TÍNH] TPR,FPR của test-dev + pi validation  0,9504  0,2627  0,4964  0,7810
+  [ĐO]   test-dev                              0,9504  0,2627  0,3665  0,6767
+
+  Precision giảm tổng cộng 0,2337 từ validation xuống test-dev:
+      - chỉ đổi tỷ lệ lớp pi      -> giảm 0,0540  (~23%)
+      - chỉ đổi TPR/FPR           -> giảm 0,1294  (~55%)
+      - phần còn lại là tương tác giữa hai yếu tố
+  Lưu ý: Recall gần như không đổi (0,9577 -> 0,9504). Toàn bộ vấn đề nằm ở FPR
+  tăng gần 3 lần: 0,0929 -> 0,2627.
+
+4.2 Vùng gây lỗi: bắt tay TCP chậm (tcprtt > 0,01 s)
+--------------------------------------------------------------------------------
+                      % Normal    % Attack   Attack trong  Normal trong  Tỷ lệ
+                      là chậm     là chậm    vùng chậm     vùng chậm    Attack:Normal
+    train-fit          19,0%       77,5%       30.462        7.590        4,01
+    validation         18,8%       77,2%        7.586        1.871        4,06
+    test-dev           41,5%       74,6%        6.909        6.647        1,04
+
+  Trong train: vào vùng "bắt tay chậm" thì khả năng là Attack cao gấp 4 lần.
+  Trong test : tỷ lệ đó còn 1,04 - quy tắc hoàn toàn mất tác dụng.
+  Nguyên nhân: tỷ lệ traffic Normal "chậm" tăng vọt 19,0% -> 41,5%.
+
+  Hậu quả đo được (model A @0,5):
+    FPR trong vùng chậm  : validation 0,433 (n=1.871) -> test-dev 0,551 (n=6.647)
+    FPR ngoài vùng chậm  : validation 0,014 (n=8.094) -> test-dev 0,058 (n=9.370)
+
+  Rừng đã học "bắt tay chậm => Attack" từ train. Quy tắc này đúng trên train
+  nhưng sai trên test. Không tham số nào của Random Forest sửa được điều này,
+  vì nó là vấn đề của DỮ LIỆU, không phải của model. Đây là lý do cả 3 model
+  đều mắc kẹt ở cùng một chỗ.
+
+4.3 Lệch phân bố của traffic Normal (train-fit -> test-dev)
+--------------------------------------------------------------------------------
+    service '-'   : 62,90% -> 71,01%  (+8,11 điểm)
+    service dns   : 13,62% ->  9,18%  (-4,44 điểm)
+    proto   tcp   : 76,03% -> 80,85%  (+4,82 điểm)
+    proto   udp   : 22,60% -> 18,08%  (-4,52 điểm)
+    state   INT   :  3,04% ->  5,24%  (+2,20 điểm)
+
+4.4 Nhiễu nhãn còn sót
+--------------------------------------------------------------------------------
+    1.993 dòng test (3,94%) trùng hoàn toàn feature + nhãn với một dòng train
+          (1.653 Attack, 340 Normal)
+    65 dòng test-dev có feature trùng dòng train nhưng NHÃN KHÁC
+    => có một mức nhiễu nhãn không thể khử, đặt trần cho Precision của mọi model.
+
+
+================================================================================
+PHẦN 5. NHỮNG GÌ ĐÃ THỬ NHƯNG KHÔNG CẢI THIỆN
+================================================================================
+
+5.1 Bước 5 của notebook 03 (chỉ tham chiếu, trên toàn tập test)
+--------------------------------------------------------------------------------
+                                          Accuracy Precision Recall    F1
+  Lần 2 - chính (bước 4)                   0,8276   0,6951  0,9436  0,8005
+  5a: ngưỡng chọn trên validation giống test 0,7928   0,6454  0,9648  0,7734
+  5b: 5a + importance weighting            0,7916   0,6441  0,9644  0,7723
+  5c: bước 4 + feature tỷ lệ               0,8221   0,6852  0,9519  0,7968
+
+  Cả ba hướng xử lý lệch phân bố đều KÉM HƠN cấu hình chính của lần 2.
+  5c (thêm 4 feature tỷ lệ byte/gói) có PR-AUC cao nhất (0,9441) nhưng F1 vẫn thấp hơn.
+
+5.2 Calibration đơn thuần
+--------------------------------------------------------------------------------
+  Xem mục 3.2 và 3.3: ở cùng ngưỡng 0,5, calibrate hay không gần như không đổi
+  (F1 0,8013 vs 0,8015). Brier trên test-dev còn xấu đi chút ít.
+
+5.3 Chọn ngưỡng trên phân bố train
+--------------------------------------------------------------------------------
+  C_val (ngưỡng 0,4636) cho F1 0,7884 trên test-final - thấp hơn cả lần 2.
+
+
+================================================================================
+PHẦN 6. RECALL THEO TỪNG LOẠI TẤN CÔNG (toàn tập test, lần 1 vs lần 2)
+================================================================================
+    Loại tấn công        n       Recall lần 1   Recall lần 2
+    Exploits           7.559       0,9836         0,9821
+    Fuzzers            4.436       0,8158         0,8102
+    Reconnaissance     2.262       0,9929         0,9929
+    DoS                1.677       0,9893         0,9863
+    Generic            1.430       0,9930         0,9937
+    Analysis             427       1,0000         1,0000
+    Shellcode            370       0,9514         0,9459
+    Backdoor             328       1,0000         0,9970
+    Worms                 44       1,0000         1,0000
+
+  Mọi loại đều >= 0,94 trừ Fuzzers (~0,81). Fuzzers chiếm phần lớn số False
+  Negative của cả hai model. Fuzzers là tấn công gửi dữ liệu ngẫu nhiên/dị dạng
+  để tìm lỗi, nên luồng mạng của nó giống traffic bình thường nhất.
+
+
+================================================================================
+PHẦN 7. KẾT LUẬN
+================================================================================
+
+7.1 Trả lời trực tiếp: mỗi lần đã cải tiến gì
+--------------------------------------------------------------------------------
+  LẦN 1 -> LẦN 2: cải tiến THẬT nhưng NHỎ.
+    Thay đổi : tham số rừng (300 cây, max_depth=20, max_features=0,5,
+               max_samples=0,7) + thêm validation/OOB + ngưỡng CV 0,515.
+    Bằng chứng cải tiến thật: PR-AUC 0,9264 -> 0,9420, ROC-AUC 0,9548 -> 0,9600,
+               overfit train-fit->validation từ 7,3 xuống 4,5 điểm.
+    Trên test-final: +1,3 Accuracy, +1,9 Precision, +1,1 F1, -0,5 Recall.
+    Giới hạn : không chạm được vào lệch phân bố; chênh validation->test vẫn ~10 điểm.
+
+  LẦN 2 -> LẦN 3: thay đổi ĐIỂM VẬN HÀNH, không phải chất lượng model.
+    Thay đổi : giữ nguyên tham số rừng, thêm isotonic calibration, đổi tiêu chí
+               chọn ngưỡng sang "Recall cao nhất với FPR <= 0,10", ngưỡng 0,711.
+    Bằng chứng không cải tiến chất lượng: PR-AUC 0,9420 -> 0,9416 và
+               ROC-AUC 0,9600 -> 0,9595 (bằng nhau trong sai số);
+               ở cùng ngưỡng 0,5 thì F1 là 0,8013 vs 0,8015 - không đổi.
+    Trên test-final: +5,3 Accuracy, +12,9 Precision, +4,1 F1, -8,3 Recall.
+    Cảnh báo : ngưỡng chọn bằng test-dev có nhãn. Đối chứng C_val (không dùng
+               test) cho F1 0,7884 - thấp hơn lần 2.
+
+7.2 Không xếp hạng "tốt nhất"
+--------------------------------------------------------------------------------
+  Ba model nằm trên gần như CÙNG một đường ROC, chỉ khác điểm cắt:
+    - Lần 1 / lần 2: Recall ~0,94-0,95, cứ ~2 cảnh báo đúng thì có ~1 cảnh báo giả.
+    - Lần 3        : Recall 0,86,       cứ ~5 cảnh báo đúng thì có ~1 cảnh báo giả.
+
+  Trong IDS, False Negative là một cuộc xâm nhập không bị phát hiện; False
+  Positive là thời gian của người phân tích. Chọn điểm nào là quyết định VẬN
+  HÀNH, không phải kết luận kỹ thuật. F1 ưu ái lần 3 vì nó cân bằng Precision
+  và Recall; Accuracy ưu ái lần 3 một phần vì Normal là lớp đa số trong tập
+  test (63,35%). Cả hai chỉ số đó đều không chứng minh lần 3 phát hiện tấn công
+  tốt hơn - thực tế nó phát hiện ÍT HƠN 772 cuộc tấn công trên test-final.
+
+7.3 Trần hiện tại và hướng còn lại
+--------------------------------------------------------------------------------
+  Hai bước cải tiến đã dùng hết hai công cụ rẻ nhất: điều chỉnh tham số
+  (lần 2) và dời điểm vận hành (lần 3). Nút thắt còn lại không nằm ở model mà
+  ở dữ liệu: quy tắc "bắt tay chậm => Attack" đúng trên train (4,01:1) và sai
+  trên test (1,04:1), cộng với lệch tỷ lệ lớp 13 điểm do chính bước làm sạch
+  tạo ra. Bước 5 của notebook 03 đã thử ba hướng xử lý lệch phân bố và cả ba
+  đều kém hơn. Báo cáo này không đề xuất hướng mới - đó là việc của giai đoạn sau.
+
+
+================================================================================
+PHẦN 8. NGUỒN SỐ LIỆU
+================================================================================
+  models/random_forest_metrics.json          (notebook 02, 01/10/2026 12:00)
+  models/random_forest_v2_metrics.json       (notebook 03, 01/10/2026 13:03)
+  models/random_forest_v3_metrics.json       (notebook 04, 01/10/2026 13:08)
+  notebooks/model_comparison_results.csv     (notebook 05, 01/10/2026 13:12)
+  notebooks/model_comparison_parameters.csv  (notebook 05)
+  reports/confusion_matrices.png             (notebook 05)
+
+  Mọi notebook đã chạy hết, tuần tự, không có cell lỗi:
+    01_Data_Cleaning        9/9  cell
+    02_Model_Training       8/8  cell
+    03_Model_Training_v2   15/15 cell
+    04_Precision_Improvement 18/18 cell
+    05_Model_Comparison    10/10 cell
+================================================================================

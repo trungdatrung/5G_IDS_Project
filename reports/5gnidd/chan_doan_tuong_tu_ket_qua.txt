@@ -1,0 +1,70 @@
+
+===== UDPFlood: 5G n=69921 p(attack) median=0.463 | UNSW analog n=6207 p median=0.965
+           5G_median UNSW_analog_median  p_sau_khi_doi   delta_p
+smean           28.0              112.0       0.612911  0.148851
+sinpkt       2576.36              0.008       0.561248  0.097188
+dur          2.59124           0.000008       0.495802  0.031742
+ct_src_ltm     100.0                3.0       0.482200  0.018140
+sjit             0.0                0.0       0.464600  0.000540
+state            INT                INT       0.464060  0.000000
+proto            udp                udp       0.464060  0.000000
+dloss            0.0                0.0       0.464060  0.000000
+dinpkt           0.0                0.0       0.464060  0.000000
+sloss            0.0                0.0       0.464060  0.000000
+p base 0.464
+
+===== SYNScan: 5G n=1048 p(attack) median=0.027 | UNSW analog n=6895 p median=0.999
+       5G_median UNSW_analog_median  p_sau_khi_doi   delta_p
+smean       44.0               56.0       0.405075  0.367461
+dbytes       0.0              354.0       0.221845  0.184230
+ackdat       0.0           0.055943       0.190711  0.153097
+tcprtt       0.0           0.113381       0.124253  0.086638
+dload        0.0        2946.894043       0.103709  0.066094
+sbytes      44.0              564.0       0.086742  0.049127
+dinpkt       0.0         110.973289       0.077686  0.040072
+synack       0.0           0.056866       0.074453  0.036838
+dpkts        0.0                8.0       0.070674  0.033060
+state        REQ                FIN       0.069590  0.031975
+p base 0.038
+
+===== TCPConnectScan: 5G n=20042 p(attack) median=0.440 | UNSW analog n=6895 p median=0.999
+       5G_median UNSW_analog_median  p_sau_khi_doi   delta_p
+dbytes       0.0              354.0       0.541287  0.100406
+state        REQ                FIN       0.509721  0.068840
+ackdat       0.0           0.055943       0.491244  0.050363
+dload        0.0        2946.894043       0.467654  0.026772
+tcprtt       0.0           0.113381       0.456028  0.015147
+dmean        0.0               44.0       0.450835  0.009953
+sbytes      60.0              564.0       0.445795  0.004913
+synack       0.0           0.056866       0.444733  0.003852
+dinpkt       0.0         110.973289       0.444126  0.003245
+djit         0.0         159.001831       0.442704  0.001823
+p base 0.441
+
+===== SYNFlood: 5G n=9721 p(attack) median=0.167 | UNSW analog n=143 p median=0.529
+       5G_median UNSW_analog_median  p_sau_khi_doi   delta_p
+smean       40.0               63.0       0.415637  0.254446
+dbytes      44.0              586.0       0.340875  0.179684
+dload        0.0        5161.937988       0.230073  0.068882
+dmean       44.0               54.0       0.221167  0.059976
+sbytes      80.0              756.0       0.220404  0.059213
+djit         0.0         143.801315       0.206478  0.045287
+dpkts        1.0                8.0       0.183026  0.021834
+dinpkt       0.0          56.967197       0.177844  0.016653
+state        RST                FIN       0.172644  0.011453
+sjit         0.0        1211.013306       0.166540  0.005349
+p base 0.161
+
+===== Benign_udp: 5G n=39453 p(attack) median=0.727 | UNSW analog n=17108 p median=0.000
+                    5G_median UNSW_analog_median  p_sau_khi_doi   delta_p
+sinpkt                 30.012               0.01       0.735528  0.036865
+dload             7215.480485        635043.5625       0.731437  0.032773
+dinpkt                 36.489              0.007       0.713267  0.014604
+sjit                68.873448                0.0       0.710149  0.011485
+spkts                     9.0                2.0       0.704513  0.005849
+djit                52.464932                0.0       0.704346  0.005682
+ct_src_dport_ltm          6.0                1.0       0.702897  0.004234
+service                     -                dns       0.701811  0.003147
+dpkts                     7.0                2.0       0.701145  0.002481
+sloss                     0.0                0.0       0.698664  0.000000
+p base 0.699

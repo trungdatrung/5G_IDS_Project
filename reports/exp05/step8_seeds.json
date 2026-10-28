@@ -1,0 +1,26 @@
+{
+  "note": "data split fixed at seed 42; only RandomForest random_state varies; evaluated on test-dev",
+  "rows": [
+    {
+      "seed": 42,
+      "binary": 0.9429068807761686,
+      "multiclass": 0.9453215855616648,
+      "diff": 0.0024147047854962134
+    },
+    {
+      "seed": 7,
+      "binary": 0.9429873730682456,
+      "multiclass": 0.9451214882894358,
+      "diff": 0.0021341152211901138
+    },
+    {
+      "seed": 2024,
+      "binary": 0.9427513577159918,
+      "multiclass": 0.9450712369446768,
+      "diff": 0.002319879228684929
+    }
+  ],
+  "mean_diff": 0.002289566411790419,
+  "wins": 3,
+  "binary_spread": 0.00023601535225381554
+}

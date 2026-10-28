@@ -1,0 +1,185 @@
+{
+ "che_do": "FULL | 300 cây | seed 42",
+ "kich_thuoc": {
+  "UNSW_train_fit": 79147,
+  "UNSW_train_fit_DR": 47776,
+  "UNSW_test_dev": 25283,
+  "UNSW_test_final": 25284,
+  "UNSW_test_final_DR": 17987,
+  "5G_toan_bo": 379556,
+  "BS1_fit": 166411,
+  "BS1_val": 41603,
+  "BS2": 171542
+ },
+ "P1_recall_theo_loai": {
+  "F31|ALL": {
+   "Benign": 0.4067,
+   "HTTPFlood": 0.2454,
+   "ICMPFlood": 0.0,
+   "SYNFlood": 0.0,
+   "SYNScan": 0.0,
+   "SlowrateDoS": 0.044,
+   "TCPConnectScan": 0.0,
+   "UDPFlood": 0.0,
+   "UDPScan": 0.331
+  },
+  "LOI12|ALL": {
+   "Benign": 0.4298,
+   "HTTPFlood": 0.2628,
+   "ICMPFlood": 0.0,
+   "SYNFlood": 0.0,
+   "SYNScan": 0.0,
+   "SlowrateDoS": 0.2355,
+   "TCPConnectScan": 0.0,
+   "UDPFlood": 0.0,
+   "UDPScan": 0.2813
+  },
+  "LOI18|ALL": {
+   "Benign": 0.4001,
+   "HTTPFlood": 0.2621,
+   "ICMPFlood": 0.0,
+   "SYNFlood": 0.0,
+   "SYNScan": 0.0,
+   "SlowrateDoS": 0.0733,
+   "TCPConnectScan": 0.0,
+   "UDPFlood": 0.0,
+   "UDPScan": 0.2813
+  },
+  "F31|DR": {
+   "Benign": 0.9669,
+   "HTTPFlood": 1.0,
+   "ICMPFlood": 0.999,
+   "SYNFlood": 0.9641,
+   "SYNScan": 0.0815,
+   "SlowrateDoS": 0.9997,
+   "TCPConnectScan": 0.9997,
+   "UDPFlood": 0.9997,
+   "UDPScan": 0.9897
+  },
+  "LOI12|DR": {
+   "Benign": 0.9485,
+   "HTTPFlood": 0.8748,
+   "ICMPFlood": 0.9971,
+   "SYNFlood": 0.3041,
+   "SYNScan": 0.0297,
+   "SlowrateDoS": 0.9969,
+   "TCPConnectScan": 0.9989,
+   "UDPFlood": 0.0,
+   "UDPScan": 0.3156
+  },
+  "LOI18|DR": {
+   "Benign": 0.9636,
+   "HTTPFlood": 0.8703,
+   "ICMPFlood": 0.999,
+   "SYNFlood": 0.2031,
+   "SYNScan": 0.0134,
+   "SlowrateDoS": 0.9969,
+   "TCPConnectScan": 0.999,
+   "UDPFlood": 0.0029,
+   "UDPScan": 0.9314
+  }
+ },
+ "P5_recall_theo_loai": {
+  "F31": {
+   "Benign": 0.1437,
+   "HTTPFlood": 1.0,
+   "ICMPFlood": 1.0,
+   "SYNFlood": 1.0,
+   "SYNScan": 1.0,
+   "SlowrateDoS": 1.0,
+   "TCPConnectScan": 0.9999,
+   "UDPFlood": 1.0,
+   "UDPScan": 1.0
+  },
+  "LOI12": {
+   "Benign": 0.0776,
+   "HTTPFlood": 0.9984,
+   "ICMPFlood": 1.0,
+   "SYNFlood": 1.0,
+   "SYNScan": 1.0,
+   "SlowrateDoS": 1.0,
+   "TCPConnectScan": 0.9995,
+   "UDPFlood": 1.0,
+   "UDPScan": 1.0
+  },
+  "LOI18": {
+   "Benign": 0.0779,
+   "HTTPFlood": 0.9995,
+   "ICMPFlood": 1.0,
+   "SYNFlood": 1.0,
+   "SYNScan": 1.0,
+   "SlowrateDoS": 1.0,
+   "TCPConnectScan": 0.9994,
+   "UDPFlood": 1.0,
+   "UDPScan": 1.0
+  }
+ },
+ "P3_recall_theo_loai": {
+  "F31|ALL": {
+   "Benign": 0.0285,
+   "HTTPFlood": 0.9948,
+   "ICMPFlood": 1.0,
+   "SYNFlood": 1.0,
+   "SYNScan": 1.0,
+   "SlowrateDoS": 0.9993,
+   "TCPConnectScan": 0.9943,
+   "UDPFlood": 1.0,
+   "UDPScan": 0.9809
+  },
+  "LOI12|ALL": {
+   "Benign": 0.0484,
+   "HTTPFlood": 0.9952,
+   "ICMPFlood": 1.0,
+   "SYNFlood": 1.0,
+   "SYNScan": 1.0,
+   "SlowrateDoS": 0.9992,
+   "TCPConnectScan": 0.9979,
+   "UDPFlood": 1.0,
+   "UDPScan": 1.0
+  },
+  "LOI18|ALL": {
+   "Benign": 0.0494,
+   "HTTPFlood": 0.9954,
+   "ICMPFlood": 1.0,
+   "SYNFlood": 1.0,
+   "SYNScan": 1.0,
+   "SlowrateDoS": 0.9989,
+   "TCPConnectScan": 0.9979,
+   "UDPFlood": 1.0,
+   "UDPScan": 0.9617
+  },
+  "F31|DR": {
+   "Benign": 0.1127,
+   "HTTPFlood": 1.0,
+   "ICMPFlood": 1.0,
+   "SYNFlood": 1.0,
+   "SYNScan": 1.0,
+   "SlowrateDoS": 1.0,
+   "TCPConnectScan": 0.9996,
+   "UDPFlood": 1.0,
+   "UDPScan": 0.9856
+  },
+  "LOI12|DR": {
+   "Benign": 0.1073,
+   "HTTPFlood": 1.0,
+   "ICMPFlood": 1.0,
+   "SYNFlood": 1.0,
+   "SYNScan": 1.0,
+   "SlowrateDoS": 1.0,
+   "TCPConnectScan": 0.9997,
+   "UDPFlood": 1.0,
+   "UDPScan": 1.0
+  },
+  "LOI18|DR": {
+   "Benign": 0.1106,
+   "HTTPFlood": 1.0,
+   "ICMPFlood": 1.0,
+   "SYNFlood": 1.0,
+   "SYNScan": 1.0,
+   "SlowrateDoS": 1.0,
+   "TCPConnectScan": 0.9997,
+   "UDPFlood": 1.0,
+   "UDPScan": 1.0
+  }
+ }
+}

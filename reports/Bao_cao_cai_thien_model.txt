@@ -1,0 +1,402 @@
+================================================================================
+        BÁO CÁO CẢI THIỆN MODEL - 7 THỰC NGHIỆM CÓ ĐỐI CHỨNG
+                  Dự án 5G IDS / UNSW-NB15 (nhãn nhị phân)
+================================================================================
+Ngày chạy      : 01/10/2026
+Notebook       : notebooks/05_Model_Improvement.ipynb (mới, không ghi đè NB 02-05)
+Số liệu gốc    : reports/exp05/*.json, reports/exp05/consolidated_test_final.csv
+Môi trường     : Python 3.11.16, scikit-learn 1.9.1, pandas 3.0.6, numpy 2.4.6
+                 KHÔNG có LightGBM/XGBoost -> chỉ dùng HistGradientBoosting
+                 (không cài thêm phụ thuộc chỉ để chạy một thực nghiệm)
+
+GIỮ CỐ ĐỊNH xuyên suốt: bộ cleaned 31 feature, one-hot proto/service/state,
+cách chia train-fit/validation/test-dev/test-final, định nghĩa nhãn, seed 42.
+Mỗi thực nghiệm chỉ đổi MỘT yếu tố.
+
+KỶ LUẬT DỮ LIỆU: test-final chỉ chạm MỘT LẦN ở bước đánh giá cuối. Mọi lựa chọn
+model và mọi lựa chọn ngưỡng đều làm trên validation hoặc test-dev.
+
+MỐC SO SÁNH DUY NHẤT: "RF-A" = tham số lần 2, fit trên train-fit (79.147 dòng).
+Ba model đã lưu được fit trên lượng dữ liệu khác nhau nên không so trực tiếp được
+với nhau; RF-A đưa mọi thực nghiệm mới về cùng một điều kiện.
+
+
+================================================================================
+1. KIỂM CHỨNG BASELINE
+================================================================================
+Tái lập được. Nạp lại ba model đã lưu và đo lại trên test-final:
+
+                  Accuracy Precision Recall    F1     FPR   PR-AUC
+  Lần 1 @0,500     0,8156   0,6773  0,9491  0,7905  0,2616  0,9264
+  Lần 2 @0,515     0,8287   0,6965  0,9438  0,8015  0,2379  0,9420
+  Lần 3 @0,711     0,8820   0,8251  0,8605  0,8424  0,1055  0,9416
+
+  Sai lệch lớn nhất so với số đã báo cáo: 5 x 10^-5. Mọi con số trong báo cáo cũ
+  đều đúng.
+
+Các claim phụ cũng kiểm chứng được:
+  - Permutation importance: ackdat = 0,0501, sbytes = 0,0257  -> ĐÚNG (trùng khít)
+  - CV PR-AUC trên train-fit = 0,9830 (std 0,0015)            -> ĐÚNG (~0,982-0,983)
+  - Fuzzers chiếm ~81% False Negative                          -> ĐÚNG (82,8%)
+  - Kích thước tập: 79.147 / 19.787 / 25.283 / 25.284          -> ĐÚNG
+  - Tỷ lệ Attack: train 0,4964 / test 0,3665                   -> ĐÚNG
+
+
+================================================================================
+2. BẢNG TỔNG HỢP (test-final, chạm một lần)
+================================================================================
+Feature: 31 cột -> 183 cột sau one-hot (nhánh ablation: 39 -> 191).
+Tham số RF dùng chung: n_estimators=300, max_depth=20, max_features=0,5,
+max_samples=0,7, min_samples_leaf=1, class_weight=None, random_state=42.
+HistGradientBoosting: max_iter=500 (early stopping dừng ở 288), learning_rate=0,1,
+max_leaf_nodes=31, min_samples_leaf=20, validation_fraction=0,1, random_state=42.
+
+  Cấu hình                               Ngưỡng PR-AUC  Acc.   Prec.  Recall   F1    FPR
+  -------------------------------------- ------ ------ ------ ------ ------ ------ ------
+  RF-A nhị phân (baseline)                0,500  0,9414 0,8186 0,6813 0,9491 0,7932 0,2569
+  HGB boosting                            0,500  0,9417 0,8231 0,6878 0,9473 0,7970 0,2487
+  RF đa lớp (1-P(Normal))                 0,500  0,9427 0,8270 0,6945 0,9424 0,7997 0,2398
+  [ablation] RF 39 feature (ô nhiễm)      0,500  0,9527 0,8345 0,6969 0,9708 0,8113 0,2443
+  -------------------------------------- ------ ------ ------ ------ ------ ------ ------
+  RF-A @FPR<=10%                          0,6949 0,9414 0,8825 0,8259 0,8607 0,8430 0,1050
+  HGB @FPR<=10%                           0,7244 0,9417 0,8787 0,8203 0,8569 0,8382 0,1086
+  RF đa lớp @FPR<=10%   <-- CẤU HÌNH CHỌN 0,6859 0,9427 0,8846 0,8259 0,8682 0,8465 0,1059
+  [ablation] 39 feature @FPR<=10%         0,7309 0,9527 0,8951 0,8305 0,8968 0,8624 0,1059
+  -------------------------------------- ------ ------ ------ ------ ------ ------ ------
+  Lần 1 (lịch sử)                         0,500  0,9264 0,8156 0,6773 0,9491 0,7905 0,2616
+  Lần 2 (lịch sử)                         0,515  0,9420 0,8287 0,6965 0,9438 0,8015 0,2379
+  Lần 3 (lịch sử)                         0,711  0,9416 0,8820 0,8251 0,8605 0,8424 0,1055
+
+  Ma trận nhầm lẫn của cấu hình chọn (RF đa lớp @0,6859):
+      TN 14.321   FP 1.696   FN 1.221   TP 8.046
+
+  PR-AUC kèm CI 95% trên test-final:
+      RF-A           0,9414  [0,9384 ; 0,9446]
+      HGB            0,9417  [0,9387 ; 0,9449]
+      RF đa lớp      0,9427  [0,9394 ; 0,9463]
+      [ablation] 39  0,9527  [0,9498 ; 0,9556]
+
+
+================================================================================
+3. Ý NGHĨA THỐNG KÊ (Thực nghiệm 1)
+================================================================================
+1.000 lần lấy mẫu có hoàn lại trên test-final. Vì mọi model dùng CÙNG các dòng nên
+lấy mẫu THEO CẶP rồi lấy phân phối của HIỆU - so hai khoảng tin cậy rời nhau là sai.
+
+  Hiệu PR-AUC                        Trung bình   CI 95%             Kết luận
+  ---------------------------------- ----------- ------------------ -------------
+  lần 2 - lần 1                       +0,01558   [+0,0135; +0,0179] CÓ ý nghĩa
+  lần 3 - lần 2                       -0,00035   [-0,0010; +0,0003] KHÔNG ý nghĩa
+  đa lớp - RF-A (test-dev)            +0,00245   [+0,0014; +0,0035] CÓ ý nghĩa
+  đa lớp - RF-A (test-final)          +0,00132   [+0,0001; +0,0025] CÓ, nhưng sát biên
+  HGB - RF-A (test-final)             +0,00027   [-0,0012; +0,0016] KHÔNG ý nghĩa
+  39 feature - 31 feature             +0,01124   [+0,0092; +0,0133] CÓ ý nghĩa
+
+PHÉP TÁCH BẠCH QUAN TRỌNG NHẤT - cùng model lần 3 nhưng cắt ở ngưỡng của lần 2:
+
+  lần 3 @0,500  -  lần 2 @0,515      Hiệu      CI 95%              p
+  ---------------------------------- --------- ------------------- -----
+  Accuracy                           +0,00023  [-0,0016; +0,0021]  0,844
+  Precision                          +0,00104  [-0,0014; +0,0035]  0,430
+  F1                                 -0,00021  [-0,0022; +0,0017]  0,860
+  PR-AUC                             -0,00035  [-0,0010; +0,0003]  0,272
+
+  => Ở CÙNG điểm vận hành, lần 3 không phân biệt được với lần 2 trên BẤT KỲ chỉ số
+     nào. Toàn bộ +5,3 điểm Accuracy và +12,9 điểm Precision của lần 3 đến từ việc
+     dời ngưỡng 0,515 -> 0,711, không đến từ model.
+
+  Ghi chú: ROC-AUC của lần 3 thấp hơn lần 2 một lượng rất nhỏ nhưng đo được
+  (-0,0005, p=0,01) - phù hợp với việc isotonic tạo đoạn phẳng và fit trên ít dữ
+  liệu hơn 20%. Không có lợi thế nào về phía model.
+
+
+================================================================================
+4. ABLATION 8 FEATURE Ô NHIỄM (Thực nghiệm 2)
+================================================================================
+CÁCH LÀM ĐỂ GIỮ ĐỐI CHỨNG: tập dòng sống sót được quyết định trong không gian 31
+feature ĐÚNG như notebook 01 (bỏ trùng + bỏ mâu thuẫn), rồi mới đính 8 cột kia vào
+những dòng đó. Đã kiểm chứng bằng assert: nhánh A TRÙNG KHÍT bộ cleaned chính thức
+(98.934 x 33 và 50.567 x 33, so sánh từng giá trị). Nếu không trùng thì hai nhánh
+đã khác nhau ở nhiều hơn 8 cột và ablation mất ý nghĩa.
+
+  Nhánh                        PR-AUC  ROC-AUC  Acc.   Prec.  Recall   F1    FPR
+  ---------------------------- ------ -------- ------ ------ ------ ------ ------
+  A: 31 feature (chính thức)   0,9414  0,9594  0,8186 0,6813 0,9491 0,7932 0,2569
+  B: 39 feature (+8 ô nhiễm)   0,9527  0,9690  0,8345 0,6969 0,9708 0,8113 0,2443
+
+  Ma trận nhầm lẫn: A -> TN 11.903 FP 4.114 FN 472 TP 8.795
+                    B -> TN 12.104 FP 3.913 FN 271 TP 8.996
+
+  Hiệu B - A: PR-AUC +0,0112 [+0,0092; +0,0133]; ROC-AUC +0,0096; Recall +0,0217;
+              FPR -0,0125. Tất cả đều có ý nghĩa thống kê.
+
+Permutation importance (validation, average_precision):
+  Nhánh A: ackdat 0,0501 | sbytes 0,0257 | dload 0,0202 | dbytes 0,0125 | smean 0,0114
+  Nhánh B: sttl 0,1798 | ct_srv_dst 0,0071 | dbytes 0,0071 | ct_dst_src_ltm 0,0065
+           | ct_state_ttl 0,0063 | sbytes 0,0061
+
+  => KHI CÓ sttl, nó áp đảo mọi feature khác (0,1798 - gấp 3,6 lần feature mạnh nhất
+     của nhánh A) và ackdat BIẾN MẤT khỏi top 10. Đây là bằng chứng trực tiếp cho
+     giả thuyết số 6 của review: chính việc bỏ feature ô nhiễm đã đẩy model sang
+     dựa vào nhóm feature thời gian bắt tay TCP.
+
+KHÁC VỚI REVIEW: review kỳ vọng tái lập mức giảm "~0,1 AUROC" mà D'hooge báo cáo.
+KHÔNG tái lập được. Mức chênh thật chỉ là 0,0096 ROC-AUC (0,9594 -> 0,9690), tức
+nhỏ hơn một bậc độ lớn. Giải thích khả dĩ: nhóm đã bỏ dòng trùng và dòng mâu thuẫn
+(D'hooge không làm bước này), và đo trên bộ test chính thức chứ không phải CV nội
+bộ. Dù lý do là gì, con số 0,1 KHÔNG được dùng để biện hộ nữa.
+
+KẾT LUẬN: 8 feature đó đáng giá ~0,011 PR-AUC. Mức này nhỏ hơn mức cải thiện do
+tinh chỉnh tham số ở lần 2 (+0,0156). KHÔNG đưa chúng trở lại model chính thức -
+nhánh B chỉ tồn tại trong notebook này, data/cleaned không bị động tới.
+
+
+================================================================================
+5. LỆCH PHÂN BỐ TRAIN/TEST (Thực nghiệm 5)
+================================================================================
+Khoảng chênh CV/test được xác nhận:
+    CV 5-fold PR-AUC trên train-fit : 0,9830 (std 0,0015; các fold 0,9802-0,9844)
+    PR-AUC trên test-final          : 0,9414
+    Khoảng chênh                    : 0,0416  -- lớn gấp 28 lần độ lệch chuẩn CV
+
+Thống kê KS train vs test, 28 feature số - 10 feature lệch nhất:
+
+  Feature   KS (tất cả)  KS (chỉ Normal)  Trung vị train  Trung vị test
+  --------- ----------- ---------------- --------------- --------------
+  ackdat       0,0984        0,2698          0,0002          0,0288
+  dbytes       0,0806        0,1904        678              354
+  dmean        0,0779        0,2061         80               66
+  dloss        0,0669        0,1669          2                1
+  dload        0,0654        0,2391       9923,36          6970,80
+  sbytes       0,0639        0,1316       1012              978
+  spkts        0,0635        0,1374         10               10
+  dpkts        0,0614        0,1604          8                8
+  tcprtt       0,0603        0,2258          0,0009          0,0530
+  synack       0,0590        0,2250          0,0007          0,0100
+
+  Thứ hạng lệch của các feature review nêu tên (trên 28 feature):
+    ackdat #1 | sbytes #6 | tcprtt #9 | synack #10 | sinpkt #13 | sload #16 | dur #17
+
+  => ackdat là feature LỆCH NHẤT trong toàn bộ tập feature, VÀ đồng thời là feature
+     QUAN TRỌNG NHẤT của model (perm 0,0501). Trung vị của nó đổi 144 lần
+     (0,0002 -> 0,0288). tcprtt đổi 59 lần. Giả thuyết 1, 5 và 7 của review được
+     xác nhận bằng số.
+
+  Lệch mạnh hơn hẳn khi chỉ xét traffic Normal (KS 0,2698 so với 0,0984) - tức
+  phần dịch chuyển nằm chủ yếu ở phía lớp Normal, đúng như báo cáo cũ.
+
+Biến phân loại (total variation distance): service 0,0720 | proto 0,0220 |
+state 0,0152 (2 mức của state chỉ có trong test). Lệch nhỏ hơn nhiều so với
+nhóm feature số.
+
+Tỷ lệ lớp: train-fit 0,4964 / validation 0,4964 / test-dev 0,3665 / test-final 0,3665.
+
+Adversarial validation (phân biệt dòng train với dòng test chỉ từ feature; 0,50
+nghĩa là không phân biệt được):
+    AUC toàn bộ    0,8012
+    AUC chỉ Normal 0,8722   <- lệch mạnh nhất
+    AUC chỉ Attack 0,6689
+
+Quy tắc "bắt tay TCP chậm => Attack" (tcprtt > 0,01 s):
+                     % Normal chậm  % Attack chậm  P(Attack|chậm)  Attack:Normal
+      train              0,1899        0,7748         0,8009           4,02
+      test               0,4128        0,7492         0,5122           1,05
+
+  => P(Attack | chậm) đổi từ 0,80 xuống 0,51. Đây là CONCEPT SHIFT (quan hệ nhãn-
+     feature thay đổi), không phải covariate shift thuần tuý - nên giải thích được
+     vì sao importance weighting ở bước 5a/5b của notebook 03 thất bại.
+
+KẾT LUẬN: lệch phân bố là CÓ THẬT, đo được bằng bốn cách độc lập, và tập trung
+đúng vào nhóm feature mà model phụ thuộc nhiều nhất. Tuy nhiên cần nói rõ: các
+thực nghiệm này CHỨNG MINH SỰ TỒN TẠI của lệch phân bố và sự trùng khớp của nó
+với nhóm feature quan trọng - chúng KHÔNG chứng minh quan hệ nhân quả với mức
+hiệu năng cụ thể trên test.
+
+
+================================================================================
+6. FUZZERS (Thực nghiệm 6)
+================================================================================
+Claim được xác nhận. Phân rã False Negative trên test-final (RF-A):
+
+  Ngưỡng 0,50 - tổng FN = 472        Ngưỡng 0,711 - tổng FN = 1.364
+    Fuzzers         391  (82,8%)       Fuzzers        1.039  (76,2%)
+    Exploits         49  (10,4%)       Exploits         187  (13,7%)
+    DoS              10  ( 2,1%)       DoS               45  ( 3,3%)
+    Shellcode         9  ( 1,9%)       Shellcode         42  ( 3,1%)
+    còn lại          13  ( 2,8%)       còn lại           51  ( 3,7%)
+
+  Recall Fuzzers: 0,8237 @0,50 -> 0,5316 @0,711. Khi nâng ngưỡng để cắt báo động
+  giả, Fuzzers là lớp chịu thiệt nặng nhất.
+
+CƠ CHẾ - model KHÔNG đoán sai Fuzzers, nó LƯỠNG LỰ về Fuzzers:
+
+  Phân vị P(Attack)   Normal   Fuzzers   Attack trừ Fuzzers
+    q10               0,0000   0,4173         0,8548
+    q50               0,0000   0,7378         0,9958
+    q90               0,7042   0,9933         1,0000
+    trung bình        0,2331   0,7199         0,9546
+    % có P < 0,5      74,3%    17,6%           1,2%
+
+  Fuzzers nằm GIỮA hai nhóm trên thang xác suất. Trung vị 0,74 - trên ngưỡng 0,5
+  nhưng dưới 0,711. Đó là lý do chúng sống sót ở ngưỡng thấp và chết hàng loạt ở
+  ngưỡng cao.
+
+ĐIỀU CHỈNH MỘT CÁCH HIỂU SAI: báo cáo cũ giải thích "luồng mạng của Fuzzers giống
+traffic bình thường nhất". Đo trực tiếp thì KHÔNG hẳn như vậy - KS trung bình so
+với Normal của Fuzzers là 0,2191, CAO HƠN các loại tấn công khác (0,1766). Nghĩa
+là xét từng feature riêng lẻ, Fuzzers không gần Normal hơn.
+
+Điều thật sự xảy ra: Fuzzers THIẾU đúng những feature giúp tách các tấn công khác
+ra khỏi Normal. Chênh lệch khả năng tách biệt lớn nhất nằm ở:
+    ct_src_ltm (0,266 so với 0,181) | trans_depth (0,120 so với 0,074)
+    ct_flw_http_mthd (0,120 so với 0,074) | sbytes (0,196 so với 0,164)
+Và cơ cấu service: Fuzzers 88,6% rơi vào service = '-' (không xác định), so với
+Normal 71,7% và các tấn công khác 50,8%; chỉ 6,3% Fuzzers đi qua http so với 28,3%
+ở các tấn công khác. Nhóm feature http/đếm-kết-nối gần như không dùng được cho
+Fuzzers, nên model phải dựa vào phần tín hiệu yếu hơn.
+
+
+================================================================================
+7. ĐA LỚP (Thực nghiệm 3)
+================================================================================
+RF đa lớp trên attack_cat (attack_cat KHÔNG bao giờ làm feature đầu vào), điểm nhị
+phân suy ra bằng P(Attack) = 1 - P(Normal).
+
+Chất lượng đa lớp trên test-final: accuracy 0,7628 | macro F1 0,5242 |
+weighted F1 0,7818. Theo lớp (precision / recall / F1):
+    Normal         0,9455 / 0,8118 / 0,8736     Exploits   0,7356 / 0,8495 / 0,7885
+    Reconnaissance 0,8214 / 0,7604 / 0,7897     Generic    0,9601 / 0,6056 / 0,7427
+    Shellcode      0,4638 / 0,5189 / 0,4898     Worms      0,7273 / 0,3636 / 0,4848
+    Fuzzers        0,3255 / 0,6298 / 0,4292     DoS        0,5452 / 0,2086 / 0,3017
+    Backdoor       0,1161 / 0,3476 / 0,1740     Analysis   0,1354 / 0,2207 / 0,1679
+
+  Bài toán đa lớp tự nó KHÓ: 547 Fuzzers thật bị gọi là Normal, và ngược lại 2.545
+  Normal thật bị gọi là Fuzzers. Hai lớp này lẫn vào nhau theo cả hai chiều.
+
+Nhưng cho nhiệm vụ NHỊ PHÂN thì có cải thiện nhỏ và nhất quán:
+    PR-AUC test-dev   : 0,9453 so với 0,9429  (+0,00245, CI [+0,0014; +0,0035])
+    PR-AUC test-final : 0,9427 so với 0,9414  (+0,00132, CI [+0,0001; +0,0025], p=0,046)
+
+  Kiểm tra độ bền theo seed (giữ nguyên cách chia, chỉ đổi random_state của rừng):
+    seed 42   : +0,00241      seed 7 : +0,00213      seed 2024 : +0,00232
+    Đa lớp thắng 3/3 seed. Biên độ nhiễu của chính model nhị phân giữa các seed chỉ
+    0,00024 - nhỏ hơn hiệu ứng khoảng 10 lần. Vậy đây là cải thiện THẬT, dù NHỎ.
+
+Về Fuzzers - kết quả hai chiều, phải nói rõ:
+    Ở ngưỡng 0,50          : Recall Fuzzers 0,7998 (đa lớp) so với 0,8237 (nhị phân) -> KÉM HƠN
+    Ở điểm vận hành FPR<=10%: Recall Fuzzers 0,5676 (đa lớp) so với 0,5496 (nhị phân) -> TỐT HƠN
+  Đa lớp không "giải quyết" được Fuzzers. Nó chỉ xếp hạng tốt hơn một chút ở vùng
+  xác suất cao, nơi điểm vận hành thực tế nằm.
+
+KHÁC VỚI REVIEW: kế hoạch cũ kỳ vọng đa lớp cho +0,005 đến +0,02 PR-AUC. Thực tế
+chỉ +0,0013 trên test-final, tức thấp hơn cận dưới của kỳ vọng khoảng 4 lần.
+
+
+================================================================================
+8. BOOSTING (Thực nghiệm 4)
+================================================================================
+HistGradientBoosting, cùng feature / cách chia / tiền xử lý / nhãn / giao thức.
+Early stopping dừng ở vòng 288 trên 500. Thời gian fit 7 giây (so với 51 giây của
+Random Forest 300 cây).
+
+    PR-AUC test-dev   : 0,9433 so với 0,9429  (+0,00039, CI [-0,0010; +0,0018], p=0,594)
+    PR-AUC test-final : 0,9417 so với 0,9414  (+0,00027, CI [-0,0012; +0,0016], p=0,688)
+
+KẾT LUẬN: KHÔNG có cải thiện. Random Forest KHÔNG phải là nút thắt của bài toán
+này. Hai họ thuật toán khác hẳn nhau về cơ chế lại cho cùng một mức hiệu năng -
+đây là bằng chứng mạnh cho thấy trần hiện tại nằm ở DỮ LIỆU/FEATURE chứ không ở
+thuật toán.
+
+KHÁC VỚI REVIEW: kế hoạch cũ kỳ vọng boosting cho +0,005 đến +0,015 PR-AUC.
+Không tái lập được; mức thật là +0,0003 và không có ý nghĩa thống kê.
+
+Lưu ý phạm vi: chỉ thử MỘT cấu hình hợp lý, không dò tham số diện rộng (đúng yêu
+cầu). Không loại trừ khả năng một cấu hình boosting được dò kỹ sẽ nhỉnh hơn, nhưng
+mức chênh gần bằng 0 cho thấy khả năng đó thấp.
+
+
+================================================================================
+9. NGƯỠNG VẬN HÀNH (Thực nghiệm 7)
+================================================================================
+Hai bước TÁCH BẠCH, cả hai đều không chạm test-final:
+  Bước 1 - chọn model : PR-AUC cao nhất trên test-dev -> RF đa lớp (0,9453)
+  Bước 2 - chọn ngưỡng: Recall cao nhất trong các ngưỡng thoả FPR <= 0,10 trên
+                        test-dev -> ngưỡng 0,6859
+
+Sau đó test-final được chạm một lần:
+
+    Ngưỡng      : 0,6859  (chọn trên test-dev)
+    Precision   : 0,8259
+    Recall      : 0,8682
+    F1          : 0,8465
+    FPR         : 0,1059
+    Accuracy    : 0,8846
+    Ma trận     : TN 14.321   FP 1.696   FN 1.221   TP 8.046
+
+  FPR trên test-final (0,1059) vượt nhẹ ràng buộc 0,10 vì ngưỡng được chọn trên
+  test-dev. Đây là sai số tổng quát hoá bình thường của việc chọn ngưỡng ngoài mẫu,
+  phải báo cáo chứ không được chỉnh lại bằng test-final.
+
+  So với baseline ở cùng ràng buộc: RF-A @0,6949 cho Recall 0,8607 / FPR 0,1050.
+  Đa lớp bắt thêm 70 cuộc tấn công với số báo động giả gần như không đổi.
+
+Recall theo loại tấn công tại điểm vận hành (test-final):
+    Analysis 1,0000 | Backdoor 0,9939 | Reconnaissance 0,9779 | Generic 0,9748
+    Exploits 0,9616 | DoS 0,9583 | Worms 0,9545 | Shellcode 0,8000 | Fuzzers 0,5676
+
+  Fuzzers vẫn là điểm yếu duy nhất và chưa được giải quyết.
+
+
+================================================================================
+10. KẾT LUẬN
+================================================================================
+
+CẢI THIỆN MODEL THẬT SỰ (có kiểm định thống kê)
+  - Lần 1 -> lần 2: +0,0156 PR-AUC, CI [+0,0135; +0,0179]. Cải thiện thật, đã biết.
+  - Đa lớp theo attack_cat: +0,0013 PR-AUC trên test-final (CI [+0,0001; +0,0025]),
+    +0,0023 trên test-dev, thắng 3/3 seed. Đây là CẢI THIỆN THẬT nhưng RẤT NHỎ -
+    sát biên ý nghĩa trên test-final, và chỉ vững nhờ test-dev cùng kiểm tra seed.
+    Không nên trình bày như một bước tiến lớn.
+
+CHỈ LÀ ĐỔI ĐIỂM VẬN HÀNH, KHÔNG PHẢI CẢI THIỆN MODEL
+  - Lần 2 -> lần 3: ở cùng ngưỡng, hai model không phân biệt được trên bất kỳ chỉ
+    số nào (p từ 0,27 đến 0,86). Toàn bộ mức tăng Accuracy/Precision đến từ ngưỡng.
+  - Mọi mức tăng Accuracy trong báo cáo này khi dời ngưỡng đều phải đọc như vậy.
+
+KHÔNG CÓ Ý NGHĨA THỐNG KÊ
+  - HistGradientBoosting so với Random Forest: +0,0003, CI chứa 0. Thuật toán không
+    phải nút thắt.
+
+VẤN ĐỀ CHƯA GIẢI QUYẾT
+  - Lệch phân bố: CV 0,9830 so với test 0,9414. Không thực nghiệm nào trong đợt này
+    thu hẹp được khoảng chênh đó.
+  - Fuzzers: vẫn chiếm 76-83% False Negative ở mọi cấu hình đã thử. Đa lớp chỉ giúp
+    Recall Fuzzers từ 0,5496 lên 0,5676 tại điểm vận hành.
+  - 8 feature ô nhiễm đáng giá +0,011 PR-AUC nhưng không được dùng. Mức giá này nhỏ
+    hơn con số ~0,1 AUROC mà review trích dẫn.
+
+ĐIỀU KHÔNG ĐƯỢC KẾT LUẬN TỪ ĐỢT NÀY
+  - Không kết luận được rằng lệch phân bố LÀ NGUYÊN NHÂN của mức hiệu năng cụ thể
+    trên test. Các phép đo chỉ cho thấy lệch phân bố tồn tại và trùng khớp với nhóm
+    feature quan trọng nhất.
+  - Không kết luận được rằng boosting nói chung không giúp được gì - chỉ thử một
+    cấu hình.
+  - Cấu hình chọn (đa lớp) hơn baseline quá ít để gọi là "model mới tốt hơn" theo
+    nghĩa thực hành; nếu ưu tiên sự đơn giản thì giữ RF nhị phân là lựa chọn hợp lý.
+
+================================================================================
+NGUỒN SỐ LIỆU
+================================================================================
+  notebooks/05_Model_Improvement.ipynb        (toàn bộ code, chạy tuần tự)
+  reports/exp05/step0_baseline.json           (kiểm chứng baseline)
+  reports/exp05/step1_bootstrap.json          (thực nghiệm 1)
+  reports/exp05/step2_ablation.json           (thực nghiệm 2)
+  reports/exp05/step5_shift.json              (thực nghiệm 5)
+  reports/exp05/step6_fuzzers.json            (thực nghiệm 6)
+  reports/exp05/step34_models.json            (thực nghiệm 3 và 4)
+  reports/exp05/step7_final.json              (thực nghiệm 7)
+  reports/exp05/step8_seeds.json              (kiểm tra độ bền seed)
+  reports/exp05/consolidated_test_final.csv   (bảng tổng hợp)
+
+  data/cleaned/ KHÔNG bị thay đổi. Các notebook 01-05 cũ KHÔNG bị ghi đè.
+================================================================================

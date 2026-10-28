@@ -1,0 +1,24 @@
+phần,chỉ số,giá trị,ghi chú
+1. Tái lập,baseline accuracy test-final,0.8186204714443918,"NB04 ghi 0,818620"
+2. Chẩn đoán,tụt ROC-AUC val → final,-0.026632,xếp hạng giữ gần nguyên
+2. Chẩn đoán,tụt MCC val → final,-0.198415,điểm vận hành sụp
+2. Chẩn đoán,KS Normal / KS Attack,2.639957,lệch tập trung ở lớp Normal
+3. Hai yếu tố,cách chia (balanced acc),0.07271007913251715,
+3. Hai yếu tố,khử trùng lặp (balanced acc),0.02678901450745952,
+4. Khử trùng lặp,"Δ PR-AUC, cùng tập đánh giá",-0.0027344524183550156,"experiment_nodedup đo được −0,0027"
+5. Thuật toán,biên độ PR-AUC 6 họ mạnh,0.024174251979923067,"nhỏ hơn khoảng tụt 1,8 lần"
+5. Thuật toán,biên độ PR-AUC gồm Logistic,0.21971751820644814,chọn sai họ thì mất nhiều
+6. Cấu hình chọn,accuracy test-final,0.8951510836892896,RF 39f (NB05) @0.7311
+6. Cấu hình chọn,balanced acc test-final,0.8954838531163261,
+6. Cấu hình chọn,recall test-final,0.8967303334412431,
+6. Cấu hình chọn,FPR test-final,0.10576262720859088,ràng buộc ≤ 0.1
+7. Không nhãn test,π̂ EM,0.468356,"π thật = 0,3665"
+7. Không nhãn test,tỷ lệ EM sửa được,0.215796,còn thiếu 78%
+8. Cái giá,Recall Fuzzers baseline,0.8237150586113616,
+8. Cái giá,Recall Fuzzers cấu hình chọn,0.6244364292155095,
+9. Kiểm định,Δ accuracy (bootstrap),0.07648378421135897,CI95 [+0.0718; +0.0808]
+9. Kiểm định,Δ PR-AUC (bootstrap),0.0113217075315574,CI95 [+0.0093; +0.0134]
+9. Kiểm định,Δ recall (bootstrap),-0.05230131259314871,CI95 [-0.0582; -0.0462]
+10. Feature ô nhiễm,Δ accuracy (39f − 31f),0.015899,cùng tập đánh giá
+11. Phân rã,% do đặt lại ngưỡng,0.7922480620155045,
+11. Phân rã,% do feature,0.20775193798449554,

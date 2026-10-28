@@ -1,0 +1,143 @@
+{
+  "stats": {
+    "V1_nodedup": {
+      "training": {
+        "rows_raw": 175341,
+        "attack_rate_raw": 0.6806223302022916,
+        "nan": 0,
+        "not_in_data": [
+          "ct_srv_ltm"
+        ],
+        "duplicate_rows_present": 75775,
+        "duplicates_removed": 0,
+        "contradictory_present": 4826,
+        "contradictory_removed": 4826,
+        "rows_final": 170515,
+        "cols_final": 33,
+        "attack_rate_final": 0.680731900419318
+      },
+      "testing": {
+        "rows_raw": 82332,
+        "attack_rate_raw": 0.5506000097167566,
+        "nan": 0,
+        "not_in_data": [
+          "ct_srv_ltm"
+        ],
+        "duplicate_rows_present": 31523,
+        "duplicates_removed": 0,
+        "contradictory_present": 1516,
+        "contradictory_removed": 1516,
+        "rows_final": 80816,
+        "cols_final": 33,
+        "attack_rate_final": 0.5560408829934667
+      }
+    },
+    "V2_nodedup_nocontra": {
+      "training": {
+        "rows_raw": 175341,
+        "attack_rate_raw": 0.6806223302022916,
+        "nan": 0,
+        "not_in_data": [
+          "ct_srv_ltm"
+        ],
+        "duplicate_rows_present": 75775,
+        "duplicates_removed": 0,
+        "contradictory_present": 4826,
+        "contradictory_removed": 0,
+        "rows_final": 175341,
+        "cols_final": 33,
+        "attack_rate_final": 0.6806223302022916
+      },
+      "testing": {
+        "rows_raw": 82332,
+        "attack_rate_raw": 0.5506000097167566,
+        "nan": 0,
+        "not_in_data": [
+          "ct_srv_ltm"
+        ],
+        "duplicate_rows_present": 31523,
+        "duplicates_removed": 0,
+        "contradictory_present": 1516,
+        "contradictory_removed": 0,
+        "rows_final": 82332,
+        "cols_final": 33,
+        "attack_rate_final": 0.5506000097167566
+      }
+    },
+    "V0_official_recipe": {
+      "training": {
+        "rows_raw": 175341,
+        "attack_rate_raw": 0.6806223302022916,
+        "nan": 0,
+        "not_in_data": [
+          "ct_srv_ltm"
+        ],
+        "duplicate_rows_present": 75775,
+        "duplicates_removed": 75775,
+        "contradictory_present": 632,
+        "contradictory_removed": 632,
+        "rows_final": 98934,
+        "cols_final": 33,
+        "attack_rate_final": 0.4963814260011725
+      },
+      "testing": {
+        "rows_raw": 82332,
+        "attack_rate_raw": 0.5506000097167566,
+        "nan": 0,
+        "not_in_data": [
+          "ct_srv_ltm"
+        ],
+        "duplicate_rows_present": 31523,
+        "duplicates_removed": 31523,
+        "contradictory_present": 242,
+        "contradictory_removed": 242,
+        "rows_final": 50567,
+        "cols_final": 33,
+        "attack_rate_final": 0.3665038463820278
+      }
+    }
+  },
+  "prevalence_gap": {
+    "V1_nodedup": {
+      "train thô": 0.680622,
+      "test thô": 0.5506,
+      "lệch thô": 0.130022,
+      "train sạch": 0.680732,
+      "test sạch": 0.556041,
+      "lệch sạch": 0.124691
+    },
+    "V2_nodedup_nocontra": {
+      "train thô": 0.680622,
+      "test thô": 0.5506,
+      "lệch thô": 0.130022,
+      "train sạch": 0.680622,
+      "test sạch": 0.5506,
+      "lệch sạch": 0.130022
+    },
+    "V0_official_recipe": {
+      "train thô": 0.680622,
+      "test thô": 0.5506,
+      "lệch thô": 0.130022,
+      "train sạch": 0.496381,
+      "test sạch": 0.366504,
+      "lệch sạch": 0.129878
+    }
+  },
+  "cross_set_duplicates": {
+    "V1_nodedup": {
+      "dòng test": 80816,
+      "trùng với train": 20960,
+      "tỷ lệ": 0.25935458325084143
+    },
+    "V2_nodedup_nocontra": {
+      "dòng test": 82332,
+      "trùng với train": 23536,
+      "tỷ lệ": 0.28586697760287616
+    },
+    "V0_official_recipe": {
+      "dòng test": 50567,
+      "trùng với train": 1993,
+      "tỷ lệ": 0.039413055945577154
+    }
+  }
+}

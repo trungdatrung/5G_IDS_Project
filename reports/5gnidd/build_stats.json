@@ -1,0 +1,79 @@
+{
+ "n_raw": 1215890,
+ "n_bs": {
+  "BS1": 728316,
+  "BS2": 487574
+ },
+ "dup_capture": [
+  {
+   "bs": "BS1",
+   "SrcAddr": "10.155.15.7",
+   "Proto": "udp",
+   "n": 281529
+  }
+ ],
+ "after_drop_dup_capture": 934361,
+ "nb01_duplicates_removed": 554798,
+ "nb01_contradictory_removed": 0,
+ "n_final": 379563,
+ "final_by_class": {
+  "HTTPFlood": 140811,
+  "SlowrateDoS": 73123,
+  "UDPFlood": 69921,
+  "Benign": 63283,
+  "TCPConnectScan": 20042,
+  "SYNFlood": 9721,
+  "SYNScan": 1048,
+  "ICMPFlood": 1030,
+  "UDPScan": 584
+ },
+ "final_by_bs_class": {
+  "BS1": {
+   "HTTPFlood": 76120,
+   "Benign": 40267,
+   "UDPFlood": 39265,
+   "SlowrateDoS": 36091,
+   "TCPConnectScan": 10014,
+   "SYNFlood": 4792,
+   "ICMPFlood": 568,
+   "SYNScan": 529,
+   "UDPScan": 375
+  },
+  "BS2": {
+   "HTTPFlood": 64691,
+   "SlowrateDoS": 37032,
+   "UDPFlood": 30656,
+   "Benign": 23016,
+   "TCPConnectScan": 10028,
+   "SYNFlood": 4929,
+   "SYNScan": 519,
+   "ICMPFlood": 462,
+   "UDPScan": 209
+  }
+ },
+ "roundtrip_feature_fidelity_unsw_test": {
+  "sinpkt": {
+   "spearman": 0.9495029880407785,
+   "within_20pct": 0.8936856052366168
+  },
+  "sjit": {
+   "spearman": 0.9829673333670209
+  },
+  "dinpkt": {
+   "spearman": 0.8394703580733044,
+   "within_20pct": 0.8059999604485139
+  },
+  "djit": {
+   "spearman": 0.9772140923569582
+  },
+  "sloss": {
+   "exact_match": 0.797674372614551,
+   "spearman": 0.9702679952919474
+  },
+  "dloss": {
+   "exact_match": 0.6483872881523524,
+   "spearman": 0.9620740738977606
+  },
+  "trans_depth_agree": 0.9800660509818656
+ }
+}

@@ -1,0 +1,296 @@
+================================================================================
+        BÁO CÁO THỰC NGHIỆM LẦN 2 - RANDOM FOREST (TUNED + CHỌN NGƯỠNG)
+                 và SO SÁNH VỚI LẦN 1 - Dự án 5G IDS / UNSW-NB15
+================================================================================
+Ngày chạy        : 01/10/2026
+Notebook         : notebooks/03_Model_Training_v2.ipynb
+                   (lần 1 giữ nguyên ở notebooks/02_Model_Training.ipynb)
+Model đã lưu     : models/random_forest_v2.joblib
+                   (gồm encoder + Random Forest + ngưỡng quyết định)
+Số liệu gốc      : models/random_forest_v2_metrics.json
+                   models/random_forest_v2_importance.csv
+Kế hoạch gốc     : reports/Phan_tich_overfit_va_huong_cai_tien.txt
+
+
+TÓM TẮT
+--------------------------------------------------------------------------------
+Trên tập test, lần 2 tốt hơn lần 1 ở mọi chỉ số, trừ Recall giảm nhẹ 0,2 điểm:
+    Accuracy  0,8176 -> 0,8276  (+1,0 điểm)
+    Precision 0,6807 -> 0,6951  (+1,4 điểm)
+    F1        0,7917 -> 0,8005  (+0,9 điểm)
+    FPR       25,7%  -> 23,9%   (551 báo động giả ít hơn)
+    PR-AUC    0,9287 -> 0,9428  (+1,4 điểm)
+Overfit giảm: khoảng chênh train-fit -> validation từ 7,3 xuống 4,5 điểm.
+
+Mức cải thiện trên test là NHỎ. Điều này khớp với dự đoán trong báo cáo phân
+tích: tinh chỉnh tham số và chọn ngưỡng không giải quyết được lệch phân bố
+giữa train và test. Khoảng chênh validation -> test vẫn khoảng 10 điểm. Các
+thực nghiệm xử lý lệch phân bố (bước 5) cũng không cải thiện, và nguyên nhân
+được lý giải ở Phần 6.
+
+
+================================================================================
+PHẦN 1. THIẾT KẾ THỰC NGHIỆM
+================================================================================
+Dữ liệu, feature và tiền xử lý giữ NGUYÊN như lần 1:
+  - Train 98.934 dòng, test 50.567 dòng, 31 feature (183 cột sau one-hot).
+  - One-hot cho proto/service/state, fit chỉ trên train.
+
+                   LẦN 1                          LẦN 2
+Validation        Không có                       Tách 20% train (stratified),
+                                                 bật OOB score
+Tham số           Mặc định                       RandomizedSearchCV
+                  (100 cây, không giới hạn)      30 tổ hợp x 5-fold CV,
+                                                 chọn theo PR-AUC
+Ngưỡng            0,5 cố định                    TunedThresholdClassifierCV
+                                                 (5-fold CV, tối ưu F1)
+Số cây            100                            300
+Dùng tập test     1 lần                          1 lần cho model chính (bước 4).
+                                                 Bước 5 dùng thêm để tham khảo,
+                                                 KHÔNG dùng để chọn model.
+
+Quy trình lần 2:
+  Bước 1: baseline lần 1 với validation + OOB (để có mốc so sánh trong train)
+  Bước 2: tìm tham số bằng CV trên 80% train
+  Bước 3: chọn ngưỡng bằng CV trên 80% train, kiểm tra trên validation
+  Bước 4: fit lại trên 100% train (tham số bước 2, ngưỡng chọn bằng CV),
+          đánh giá MỘT lần trên test
+  Bước 5: thực nghiệm phụ về lệch phân bố (5a, 5b, 5c)
+
+
+================================================================================
+PHẦN 2. KẾT QUẢ TÌM THAM SỐ (BƯỚC 2) VÀ CHỌN NGƯỠNG (BƯỚC 3)
+================================================================================
+Không gian tìm kiếm (theo Probst và cộng sự, 2019):
+  max_features     : 'sqrt', 0,1, 0,2, 0,3, 0,5
+  min_samples_leaf : 1, 2, 3, 5, 10
+  max_samples      : None, 0,5, 0,7
+  class_weight     : None, 'balanced', 'balanced_subsample'
+  max_depth        : None, 20, 30
+
+Tham số tốt nhất (CV PR-AUC = 0,9829):
+  max_features = 0,5    (lần 1: 'sqrt', khoảng 0,074)
+  max_samples  = 0,7    (lần 1: None, tức 100%)
+  max_depth    = 20     (lần 1: không giới hạn)
+  min_samples_leaf = 1, class_weight = None (giống lần 1)
+
+Nhận xét:
+  - 10 tổ hợp tốt nhất chỉ chênh nhau 0,0007 PR-AUC (0,9822-0,9829), nhỏ hơn
+    độ lệch chuẩn giữa các fold (khoảng 0,0015). "Bề mặt" tham số rất phẳng:
+    chọn tổ hợp nào trong nhóm đầu cũng cho kết quả tương đương. Điều này
+    khớp với nhận định của Probst và cộng sự: Random Forest khá ổn định với
+    tham số mặc định.
+  - class_weight không giúp được, vì tập train đã gần cân bằng (50/50).
+
+Ngưỡng quyết định:
+  - Chọn bằng CV trên 80% train: 0,505
+  - Chọn bằng CV trên 100% train (model cuối): 0,515
+  -> Ngưỡng tối ưu gần như bằng 0,5. Lý do: CV được làm trên dữ liệu cùng phân
+     bố với train (50/50, xác suất của model khá chuẩn), nên ngưỡng mặc định đã
+     gần tối ưu. Chọn ngưỡng theo cách "sạch" (không dùng tập test) gần như
+     không thay đổi kết quả.
+
+
+================================================================================
+PHẦN 3. OVERFIT: TRAIN - VALIDATION - OOB (không dùng tập test)
+================================================================================
+                          Acc      Prec     Recall   F1       FPR     ROC-AUC
+  Baseline (lần 1):
+    train-fit (80%)      1,0000   1,0000   1,0000   1,0000   0,0%    1,0000
+    validation (20%)     0,9268   0,9055   0,9519   0,9281   9,79%   0,9841
+    OOB                  0,9229
+  Tuned (lần 2):
+    train-fit (80%)      0,9775   0,9662   0,9893   0,9776   3,41%   0,9985
+    validation, ngưỡng 0,5     0,9322   0,9104   0,9577   0,9335   9,29%   0,9860
+    validation, ngưỡng CV      0,9324   0,9123   0,9557   0,9335   9,05%   0,9860
+    OOB                  0,9280
+
+  Khoảng chênh train-fit -> validation:  7,3 điểm (lần 1) -> 4,5 điểm (lần 2)
+  Accuracy validation:                   0,9268 -> 0,9324 (+0,56 điểm)
+  OOB accuracy:                          0,9229 -> 0,9280 (+0,51 điểm)
+
+Kết luận: overfit "thông thường" đã giảm (max_depth=20 và max_samples=0,7 làm
+mỗi cây bớt học thuộc). Hiệu năng trên dữ liệu cùng phân bố tăng nhẹ nhưng
+nhất quán ở cả validation lẫn OOB.
+
+
+================================================================================
+PHẦN 4. SO SÁNH TRÊN TẬP TEST: LẦN 1 vs LẦN 2
+================================================================================
+4.1. Các chỉ số
+                          Lần 1        Lần 2        Thay đổi
+  Accuracy               0,8176       0,8276       +0,0100
+  Precision              0,6807       0,6951       +0,0144
+  Recall                 0,9459       0,9436       -0,0023
+  F1-score               0,7917       0,8005       +0,0088
+  FPR (báo động giả)     25,67%       23,95%       -1,72 điểm
+  Balanced accuracy      0,8446       0,8520       +0,0074
+  ROC-AUC                0,9554       0,9603       +0,0049
+  PR-AUC                 0,9287       0,9428       +0,0140
+  Ngưỡng quyết định      0,5          0,515
+
+4.2. Ma trận nhầm lẫn
+                               LẦN 1                    LẦN 2
+                        Dự đoán    Dự đoán       Dự đoán    Dự đoán
+                        Normal     Attack        Normal     Attack
+  Thực tế Normal      TN 23.812  FP  8.222     TN 24.363  FP  7.671
+  Thực tế Attack      FN  1.003  TP 17.530     FN  1.046  TP 17.487
+
+  Thay đổi: TN +551 | FP -551 (-6,7%) | FN +43 | TP -43
+  Tổng số lỗi: 9.225 -> 8.717 (-508 lỗi, -5,5%)
+
+4.3. Lý giải
+  - Lần 2 giảm được 551 báo động giả, đổi lại bỏ sót thêm 43 tấn công. Tỷ lệ
+    đổi khoảng 13 FP bớt được cho mỗi FN tăng thêm, có lợi rõ ràng.
+  - Precision tăng: 100 cảnh báo thì khoảng 69,5 cái đúng (lần 1: khoảng 68).
+  - ROC-AUC và PR-AUC đều tăng, nghĩa là model lần 2 xếp hạng nguy cơ tốt hơn
+    thật sự, không chỉ do dịch ngưỡng.
+  - Recall giảm 0,2 điểm, do ngưỡng cao hơn một chút (0,515) và cây nông hơn.
+    Mức giảm này không đáng kể.
+
+4.4. Recall theo loại tấn công (test)
+                     Số mẫu    Lần 1     Lần 2
+  Exploits            7.559   0,9836    0,9821
+  Fuzzers             4.436   0,8158    0,8102
+  Reconnaissance      2.262   0,9929    0,9929
+  DoS                 1.677   0,9893    0,9863
+  Generic             1.430   0,9930    0,9937
+  Analysis              427   1,0000    1,0000
+  Shellcode             370   0,9514    0,9459
+  Backdoor              328   1,0000    0,9970
+  Worms                  44   1,0000    1,0000
+  -> Gần như không đổi. Fuzzers vẫn là điểm yếu (~81%) và cần hướng xử lý
+     riêng (Phần 7).
+
+
+================================================================================
+PHẦN 5. FEATURE IMPORTANCE: PERMUTATION (MỚI) so với MDI (như lần 1)
+================================================================================
+Permutation importance: model tuned (bước 2), đo trên validation, scoring
+PR-AUC, 5 lần lặp. Con số là mức PR-AUC giảm khi xáo trộn ngẫu nhiên feature đó.
+
+  Hạng  Feature   Permutation (±std)    MDI      Hạng MDI
+   1    ackdat    0,0501 (±0,0007)     0,1694      2
+   2    sbytes    0,0257 (±0,0004)     0,0366      8
+   3    dload     0,0202 (±0,0004)     0,2446      1
+   4    dbytes    0,0125 (±0,0006)     0,0787      4
+   5    smean     0,0114 (±0,0003)     0,0324      9
+   6    service   0,0110 (±0,0007)     0,0141     15
+   7    synack    0,0083 (±0,0003)     0,0530      5
+   8    tcprtt    0,0072 (±0,0004)     0,0813      3
+   9    dmean     0,0063 (±0,0001)     0,0400      7
+  10    dloss     0,0056 (±0,0004)     0,0147     14
+
+Nhận xét:
+  - Cả 2 phương pháp đều xác nhận nhóm "thời gian bắt tay TCP + lưu lượng
+    phản hồi" là cốt lõi (ackdat, dload, dbytes, synack, tcprtt).
+  - MDI đánh giá dload quá cao (0,245). Permutation cho thấy sbytes, smean và
+    service quan trọng hơn MDI thể hiện. Điều này phù hợp với cảnh báo của
+    Strobl và cộng sự (2007) và tài liệu scikit-learn: MDI thiên vị feature liên
+    tục và feature tương quan.
+  - tcprtt tụt từ hạng 3 (MDI) xuống hạng 8 (permutation), vì tcprtt = synack +
+    ackdat. Khi xáo trộn tcprtt, model vẫn lấy lại thông tin từ ackdat/synack.
+  - Lưu ý: model lần 2 dùng max_features=0,5 nên phân bổ MDI khác lần 1
+    (dload lên hạng 1). Không nên so sánh trực tiếp bảng MDI giữa 2 lần.
+
+
+================================================================================
+PHẦN 6. THỰC NGHIỆM PHỤ VỀ LỆCH PHÂN BỐ (BƯỚC 5) - CHỈ THAM KHẢO
+================================================================================
+Các thực nghiệm này dùng FEATURE (không dùng nhãn) của tập test để đo độ lệch,
+và xem kết quả trực tiếp trên test. Chúng không dùng để chọn model chính.
+
+Độ lệch train/test (adversarial AUC): 0,8040, khớp với lần chẩn đoán trước
+(0,8020).
+
+                                    Acc     Prec    Recall  F1      FPR     PR-AUC
+  Lần 1 (baseline)                 0,8176  0,6807  0,9459  0,7917  25,67%  0,9287
+  Lần 2 - chính (bước 4)           0,8276  0,6951  0,9436  0,8005  23,95%  0,9428
+  5a: ngưỡng chọn trên validation
+      "giống test" (ngưỡng 0,461)  0,7928  0,6454  0,9648  0,7734  30,67%  0,9376
+  5b: 5a + importance weighting
+      (ngưỡng 0,428)               0,7916  0,6441  0,9644  0,7723  30,84%  0,9369
+  5c: bước 4 + 4 feature tỷ lệ
+      (ngưỡng 0,485)               0,8221  0,6852  0,9519  0,7968  25,30%  0,9441
+
+Kết quả:
+  - 5a và 5b đều KÉM HƠN lần 2: Recall tăng lên 96,5% nhưng FPR tăng lên
+    khoảng 31%.
+  - 5c có PR-AUC và ROC-AUC (0,9613) cao nhất, ít bỏ sót nhất (FN = 892, ít
+    hơn 154 so với lần 2), nhưng FPR cao hơn nên F1 thấp hơn lần 2 một chút.
+
+Lý giải: vì sao các kỹ thuật xử lý lệch phân bố không hiệu quả ở đây
+  - Các dòng train "giống test nhất" có 56% là Attack (Normal chỉ 44%). Vùng
+    dữ liệu mà traffic Normal của tập test rơi vào (bắt tay chậm, tốc độ thấp,
+    ít byte phản hồi) thì trong tập train chủ yếu là tấn công.
+  - Importance weighting chỉ hiệu quả khi lệch là "covariate shift thuần túy":
+    phân bố feature thay đổi nhưng quan hệ feature -> nhãn giữ nguyên, và tập
+    train có đủ ví dụ ở vùng đó. Ở đây tập train gần như không có ví dụ
+    "Normal chậm". Tăng trọng số cho vùng này thực chất là tăng trọng số cho
+    các mẫu Attack, nên model càng nghiêng về báo Attack (FPR tăng).
+  - Chọn ngưỡng trên validation "giống test" cũng bị lệch theo cùng lý do,
+    nên ngưỡng hạ xuống 0,46 và FPR tăng.
+  => Đây không phải vấn đề có thể "chỉnh" bằng thuật toán trên cùng dữ liệu
+     train. Model cần thêm VÍ DỤ traffic Normal đa dạng hơn (xem Phần 7).
+  - Feature tỷ lệ (5c) giúp model xếp hạng tốt hơn (AUC cao hơn), là hướng
+    có triển vọng nếu kết hợp với dữ liệu tốt hơn.
+
+
+================================================================================
+PHẦN 7. KIỂM TRA BỔ SUNG VÀ HẠN CHẾ
+================================================================================
+  - Trùng lặp giữa train và test: 1.993 dòng test (3,94%) trùng hoàn toàn (cả
+    feature lẫn nhãn) với một dòng train, gồm 1.653 Attack và 340 Normal. Các
+    dòng này làm kết quả test lạc quan hơn một chút, áp dụng như nhau cho cả 2
+    lần. Ta giữ nguyên vì đây là tập test chính thức của tác giả dataset. Khi
+    viết báo cáo cuối có thể nêu thêm kết quả trên tập test đã bỏ các dòng
+    trùng này.
+  - Khoảng chênh validation -> test vẫn khoảng 10 điểm (0,9324 -> 0,8276).
+    FPR tăng từ 9,05% (validation) lên 23,95% (test). Đây là giới hạn chính
+    của model hiện tại.
+  - Mỗi cấu hình chỉ chạy với một random_state (42). Các chênh lệch dưới
+    khoảng 0,3 điểm (vd. Recall theo loại tấn công) có thể nằm trong dao động
+    ngẫu nhiên.
+  - Bảng 4.4 trong notebook 03 hiển thị thêm một dòng "Normal" (n = 0, NaN)
+    do cột attack_cat có kiểu category. Code đã được sửa (lọc n > 0) và file
+    JSON đã được làm sạch. Output trong notebook sẽ đúng ở lần chạy sau.
+
+
+================================================================================
+PHẦN 8. KẾT LUẬN VÀ ĐỀ XUẤT CHO LẦN 3
+================================================================================
+Kết luận
+  + Quy trình đánh giá đã đúng chuẩn: có validation/OOB, mọi lựa chọn dựa trên
+    dữ liệu train, test chỉ dùng một lần cho model chính.
+  + Overfit giảm (chênh lệch 7,3 -> 4,5 điểm). Model lần 2 tốt hơn lần 1 nhẹ
+    nhưng nhất quán: F1 +0,9, Precision +1,4, PR-AUC +1,4 điểm, bớt 551 báo
+    động giả.
+  - Tinh chỉnh tham số và chọn ngưỡng đã gần như hết dư địa trên dữ liệu hiện
+    tại. Nút thắt còn lại là lệch phân bố của traffic Normal giữa train và
+    test, và nó không thể sửa bằng trọng số hay ngưỡng.
+
+Đề xuất cho lần 3 (theo thứ tự ưu tiên)
+  1. Bổ sung dữ liệu Normal đa dạng hơn. Thư mục data/raw đã có 4 file đầy đủ
+     UNSW-NB15_1..4.csv (khoảng 2,5 triệu bản ghi), mà tập train/test chính
+     thức được trích ra từ đó. Có thể lấy thêm traffic Normal từ các file này
+     để train, với điều kiện:
+       - loại bỏ mọi bản ghi trùng với tập test (tránh rò rỉ dữ liệu),
+       - áp dụng đúng pipeline làm sạch của notebook 01 (cùng feature, bỏ cùng
+         các cột ô nhiễm).
+     Cần lưu ý file đầy đủ có schema khác (tên cột, có thêm cột IP/port là
+     metadata cần bỏ).
+  2. Thử model boosting: HistGradientBoostingClassifier (có sẵn trong
+     scikit-learn), XGBoost, LightGBM, kèm feature tỷ lệ của 5c. Dùng cùng quy
+     trình validation để so sánh công bằng.
+  3. Chọn ngưỡng theo chi phí vận hành, không chỉ theo F1. Ví dụ: thống nhất
+     với nhóm "1 tấn công bỏ sót = k báo động giả", rồi dùng
+     TunedThresholdClassifierCV với hàm chi phí đó.
+  4. Phân tích riêng Fuzzers (Recall khoảng 81%) và các luồng Normal bị báo
+     nhầm (state FIN/INT, service http/ftp) để tìm feature phân biệt bổ sung.
+  5. Báo cáo kết quả với nhiều random_state (vd. 5 seed) để có khoảng tin cậy.
+
+Tài liệu tham khảo: xem Phần 5 của reports/Phan_tich_overfit_va_huong_cai_tien.txt
+(Probst et al. 2019; Bergstra & Bengio 2012; scikit-learn
+TunedThresholdClassifierCV; Strobl et al. 2007; Quiñonero-Candela et al. 2009;
+Arp et al. 2022; ...).
+================================================================================

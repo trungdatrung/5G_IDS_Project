@@ -1,0 +1,234 @@
+{
+  "quick_mode": false,
+  "best_params": {
+    "min_samples_leaf": 1,
+    "max_samples": 0.7,
+    "max_features": 0.5,
+    "max_depth": 20,
+    "class_weight": null
+  },
+  "cv_pr_auc": 0.982862,
+  "threshold_final": 0.515152,
+  "oob_baseline": 0.922903,
+  "oob_tuned": 0.927957,
+  "train_test_overlap_rows": 1993,
+  "validation": {
+    "Baseline - train-fit": {
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "fpr": 0.0,
+      "balanced_acc": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc": 1.0,
+      "tn": 39860,
+      "fp": 0,
+      "fn": 0,
+      "tp": 39287
+    },
+    "Baseline - validation": {
+      "accuracy": 0.926821,
+      "precision": 0.905481,
+      "recall": 0.951945,
+      "f1": 0.928132,
+      "fpr": 0.097943,
+      "balanced_acc": 0.927001,
+      "roc_auc": 0.984094,
+      "pr_auc": 0.981506,
+      "tn": 8989,
+      "fp": 976,
+      "fn": 472,
+      "tp": 9350
+    },
+    "Tuned - train-fit": {
+      "accuracy": 0.977485,
+      "precision": 0.96619,
+      "recall": 0.989259,
+      "f1": 0.977588,
+      "fpr": 0.034119,
+      "balanced_acc": 0.97757,
+      "roc_auc": 0.99847,
+      "pr_auc": 0.998464,
+      "tn": 38500,
+      "fp": 1360,
+      "fn": 422,
+      "tp": 38865
+    },
+    "Tuned - validation": {
+      "accuracy": 0.932228,
+      "precision": 0.910384,
+      "recall": 0.957748,
+      "f1": 0.933466,
+      "fpr": 0.092925,
+      "balanced_acc": 0.932411,
+      "roc_auc": 0.986038,
+      "pr_auc": 0.984903,
+      "tn": 9039,
+      "fp": 926,
+      "fn": 415,
+      "tp": 9407
+    },
+    "Tuned, ngưỡng 0.5 - validation": {
+      "accuracy": 0.932228,
+      "precision": 0.910384,
+      "recall": 0.957748,
+      "f1": 0.933466,
+      "fpr": 0.092925,
+      "balanced_acc": 0.932411,
+      "roc_auc": 0.986038,
+      "pr_auc": 0.984903,
+      "tn": 9039,
+      "fp": 926,
+      "fn": 415,
+      "tp": 9407
+    },
+    "Tuned + ngưỡng CV - validation": {
+      "accuracy": 0.93243,
+      "precision": 0.912334,
+      "recall": 0.955712,
+      "f1": 0.933519,
+      "fpr": 0.090517,
+      "balanced_acc": 0.932597,
+      "roc_auc": 0.986038,
+      "pr_auc": 0.984903,
+      "tn": 9063,
+      "fp": 902,
+      "fn": 435,
+      "tp": 9387
+    }
+  },
+  "test": {
+    "Lần 1 (baseline)": {
+      "accuracy": 0.817569,
+      "precision": 0.680724,
+      "recall": 0.94588,
+      "f1": 0.79169,
+      "fpr": 0.256665,
+      "balanced_acc": 0.844608,
+      "roc_auc": 0.95544,
+      "pr_auc": 0.928735,
+      "tn": 23812,
+      "fp": 8222,
+      "fn": 1003,
+      "tp": 17530
+    },
+    "Lần 2 - chính (bước 4)": {
+      "accuracy": 0.827615,
+      "precision": 0.695087,
+      "recall": 0.94356,
+      "f1": 0.800485,
+      "fpr": 0.239464,
+      "balanced_acc": 0.852048,
+      "roc_auc": 0.960299,
+      "pr_auc": 0.94276,
+      "tn": 24363,
+      "fp": 7671,
+      "fn": 1046,
+      "tp": 17487
+    },
+    "5a: ngưỡng chọn trên validation giống test": {
+      "accuracy": 0.79281,
+      "precision": 0.645394,
+      "recall": 0.964766,
+      "f1": 0.773407,
+      "fpr": 0.306674,
+      "balanced_acc": 0.829046,
+      "roc_auc": 0.955958,
+      "pr_auc": 0.937573,
+      "tn": 22210,
+      "fp": 9824,
+      "fn": 653,
+      "tp": 17880
+    },
+    "5b: 5a + importance weighting": {
+      "accuracy": 0.791623,
+      "precision": 0.644062,
+      "recall": 0.964442,
+      "f1": 0.772345,
+      "fpr": 0.30836,
+      "balanced_acc": 0.828041,
+      "roc_auc": 0.956118,
+      "pr_auc": 0.936885,
+      "tn": 22156,
+      "fp": 9878,
+      "fn": 659,
+      "tp": 17874
+    },
+    "5c: bước 4 + feature tỷ lệ": {
+      "accuracy": 0.822058,
+      "precision": 0.685167,
+      "recall": 0.95187,
+      "f1": 0.796793,
+      "fpr": 0.253044,
+      "balanced_acc": 0.849413,
+      "roc_auc": 0.961278,
+      "pr_auc": 0.944082,
+      "tn": 23928,
+      "fp": 8106,
+      "fn": 892,
+      "tp": 17641
+    }
+  },
+  "per_attack_cat_recall": [
+    {
+      "attack_cat": "Exploits",
+      "n": 7559,
+      "recall_lan1": 0.983596,
+      "recall_lan2": 0.98214
+    },
+    {
+      "attack_cat": "Fuzzers",
+      "n": 4436,
+      "recall_lan1": 0.815825,
+      "recall_lan2": 0.810189
+    },
+    {
+      "attack_cat": "Reconnaissance",
+      "n": 2262,
+      "recall_lan1": 0.992927,
+      "recall_lan2": 0.992927
+    },
+    {
+      "attack_cat": "DoS",
+      "n": 1677,
+      "recall_lan1": 0.989267,
+      "recall_lan2": 0.986285
+    },
+    {
+      "attack_cat": "Generic",
+      "n": 1430,
+      "recall_lan1": 0.993007,
+      "recall_lan2": 0.993706
+    },
+    {
+      "attack_cat": "Analysis",
+      "n": 427,
+      "recall_lan1": 1.0,
+      "recall_lan2": 1.0
+    },
+    {
+      "attack_cat": "Shellcode",
+      "n": 370,
+      "recall_lan1": 0.951351,
+      "recall_lan2": 0.945946
+    },
+    {
+      "attack_cat": "Backdoor",
+      "n": 328,
+      "recall_lan1": 1.0,
+      "recall_lan2": 0.996951
+    },
+    {
+      "attack_cat": "Worms",
+      "n": 44,
+      "recall_lan1": 1.0,
+      "recall_lan2": 1.0
+    }
+  ],
+  "thresholds_step5": {
+    "5a": 0.46051535611845423,
+    "5b": 0.4277510564200661,
+    "5c": 0.48484848484848486
+  }
+}

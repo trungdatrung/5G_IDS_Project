@@ -1,0 +1,256 @@
+================================================================================
+        BÁO CÁO HUẤN LUYỆN VÀ KIỂM THỬ LẦN 1 - RANDOM FOREST (BASELINE)
+                  Dự án 5G IDS - Bộ dữ liệu UNSW-NB15
+================================================================================
+Ngày chạy        : 30/09/2026
+Notebook         : notebooks/02_Model_Training.ipynb
+Model đã lưu     : models/random_forest.joblib
+Số liệu gốc      : models/random_forest_metrics.json
+                   models/random_forest_feature_importance.csv
+
+
+1. MỤC TIÊU
+--------------------------------------------------------------------------------
+Phân loại nhị phân từng luồng mạng (flow) thành:
+    0 = Normal (bình thường)
+    1 = Attack (tấn công)
+Đây là lần chạy đầu tiên (baseline): dùng tham số mặc định, chưa tinh chỉnh,
+để có mốc so sánh cho các lần cải tiến sau.
+
+
+2. DỮ LIỆU
+--------------------------------------------------------------------------------
+Nguồn: 2 file Parquet đã làm sạch ở notebook 01, dùng đúng cách chia train/test
+có sẵn của tác giả UNSW-NB15.
+
+                    Tổng      Normal (0)         Attack (1)
+    Tập train     98.934   49.825 (50,4%)    49.109 (49,6%)
+    Tập test      50.567   32.034 (63,3%)    18.533 (36,7%)
+
+Các bước làm sạch đã áp dụng trước đó (notebook 01):
+  - Bỏ cột metadata `id`.
+  - Bỏ 8 feature ô nhiễm theo bài báo của D'hooge và cộng sự (PST 2022):
+    ct_state_ttl, sttl, dttl, ct_dst_ltm, ct_srv_dst, ct_dst_src_ltm,
+    ct_srv_src, ct_dst_sport_ltm. Feature thứ 9 trong bài là `ct_srv_ltm`,
+    nhưng cột này không có trong dữ liệu.
+  - Bỏ 3 feature không có khả năng phân biệt: is_sm_ips_ports, ct_ftp_cmd,
+    is_ftp_login.
+  - Bỏ dòng trùng lặp và dòng mâu thuẫn (feature giống nhau nhưng khác nhãn).
+
+Lưu ý: tỷ lệ 50/50 của tập train không phải do cân bằng nhân tạo. Đó là hệ quả
+của việc bỏ dòng trùng (lớp Generic gần như toàn là bản sao).
+
+Feature đầu vào: 31 cột, gồm 28 cột số và 3 cột phân loại (proto, service,
+state). Sau one-hot encoding thành 183 cột. Không dùng `label` và `attack_cat`
+làm feature, vì `attack_cat` chính là tên loại tấn công, dùng sẽ gây rò rỉ nhãn.
+
+
+3. CÁCH HUẤN LUYỆN
+--------------------------------------------------------------------------------
+Pipeline gồm 2 bước, chỉ fit trên tập train:
+  (1) OneHotEncoder(handle_unknown='ignore') cho proto, service, state.
+      Giá trị chỉ có ở tập test (state = ACC, CLO) được mã hóa thành toàn 0.
+  (2) RandomForestClassifier(n_estimators=100, random_state=42), các tham số
+      khác để mặc định:
+        - 100 cây, mỗi cây học trên một mẫu bootstrap của tập train
+        - mỗi nút xét ngẫu nhiên khoảng 13 cột (sqrt(183)), chọn phép chia
+          theo Gini
+        - không giới hạn độ sâu
+        - ngưỡng quyết định 0,5
+
+Không tinh chỉnh tham số, không SMOTE/class_weight, không chuẩn hóa dữ liệu
+(Random Forest không cần). Tập test chỉ được dùng một lần để đánh giá.
+
+
+4. KẾT QUẢ TRÊN TẬP TEST
+--------------------------------------------------------------------------------
+    Accuracy  (độ chính xác tổng thể)     : 0,8176   (81,76%)
+    Precision (độ chính xác khi báo Attack) : 0,6807   (68,07%)
+    Recall    (tỷ lệ phát hiện Attack)      : 0,9459   (94,59%)
+    F1-score  (trung bình điều hòa P và R)  : 0,7917   (79,17%)
+
+Các chỉ số bổ sung, tính từ ma trận nhầm lẫn và xác suất dự đoán:
+    Specificity (Normal được nhận đúng)     : 0,7433   (74,33%)
+    False Positive Rate (báo động giả)      : 0,2567   (25,67%)
+    False Negative Rate (bỏ sót tấn công)   : 0,0541   (5,41%)
+    NPV (đoán Normal thì đúng bao nhiêu)    : 0,9596   (95,96%)
+    Balanced Accuracy                       : 0,8446
+    ROC-AUC                                 : 0,9554
+    Accuracy trên chính tập train           : 1,0000   (100%)
+
+Classification report:
+                  precision    recall  f1-score   support
+    Normal (0)       0,9596    0,7433    0,8377     32034
+    Attack (1)       0,6807    0,9459    0,7917     18533
+
+
+5. MA TRẬN NHẦM LẪN (CONFUSION MATRIX)
+--------------------------------------------------------------------------------
+                                  DỰ ĐOÁN
+                         Normal (0)        Attack (1)        Tổng thực tế
+    THỰC TẾ Normal (0)   TN = 23.812       FP =  8.222       32.034
+    THỰC TẾ Attack (1)   FN =  1.003       TP = 17.530       18.533
+    Tổng dự đoán              24.815           25.752        50.567
+
+  TN (True Negative)  = 23.812: luồng bình thường, model đoán đúng là Normal.
+  FP (False Positive) =  8.222: luồng bình thường bị báo nhầm là tấn công
+                                (báo động giả).
+  FN (False Negative) =  1.003: luồng tấn công bị bỏ sót, model cho là Normal.
+  TP (True Positive)  = 17.530: luồng tấn công được phát hiện đúng.
+
+Tổng số dự đoán sai = 8.222 + 1.003 = 9.225 (18,2%). Trong đó 89% là báo động
+giả (FP), chỉ 11% là bỏ sót (FN). Lỗi chính của model là báo động giả.
+
+
+6. LÝ GIẢI CÁC THÔNG SỐ
+--------------------------------------------------------------------------------
+6.1. Accuracy = 0,8176
+  (TN + TP) / Tổng = (23.812 + 17.530) / 50.567.
+  Cứ 100 luồng thì model phân loại đúng khoảng 82 luồng.
+  Tập test có 63,3% là Normal, nên một model "luôn đoán Normal" đã đạt 0,6335.
+  Model hơn mốc đó khoảng 18 điểm phần trăm. Vì hai lớp trong tập test không
+  cân bằng, Accuracy không nên là chỉ số chính. Cần xem Precision, Recall và F1.
+
+6.2. Precision = 0,6807 (điểm yếu nhất)
+  TP / (TP + FP) = 17.530 / 25.752.
+  Trong 100 lần model báo "Attack", khoảng 68 lần đúng và 32 lần là báo động
+  giả. Trong thực tế vận hành IDS, điều này nghĩa là người quản trị phải kiểm
+  tra nhiều cảnh báo sai, dễ dẫn tới "mệt mỏi vì cảnh báo" (alert fatigue).
+  Precision thấp vì FP lớn (8.222). Nguyên nhân phân tích ở mục 7.
+
+6.3. Recall = 0,9459 (điểm mạnh nhất)
+  TP / (TP + FN) = 17.530 / 18.533.
+  Model phát hiện được khoảng 95 trên 100 cuộc tấn công, chỉ bỏ sót 5,4%.
+  Với hệ thống phát hiện xâm nhập, bỏ sót tấn công thường nguy hiểm hơn báo
+  nhầm, nên Recall cao là kết quả tốt.
+  Recall theo từng loại tấn công:
+      Analysis, Backdoor, Worms         : 100%
+      Reconnaissance 99,3% | Generic 99,3% | DoS 98,9% | Exploits 98,4%
+      Shellcode                          : 95,1%
+      Fuzzers                            : 81,6%   <- yếu nhất
+  Riêng Fuzzers chiếm 817 / 1.003 ca bỏ sót (81,5% tổng FN). Fuzzers gửi dữ
+  liệu ngẫu nhiên hoặc dị dạng tới dịch vụ, nên hình dạng luồng (số byte, số
+  gói, thời gian) dễ trùng với traffic bình thường.
+
+6.4. F1-score = 0,7917
+  F1 = 2 x P x R / (P + R), là trung bình điều hòa nên bị kéo về phía chỉ số
+  thấp hơn. Recall rất cao (0,95) nhưng Precision thấp (0,68) làm F1 chỉ đạt
+  khoảng 0,79. F1 cho thấy model chưa cân bằng giữa "bắt đủ" và "bắt đúng".
+
+6.5. Specificity = 0,7433 và NPV = 0,9596
+  Chỉ 74% traffic bình thường được nhận đúng. Khoảng 1/4 luồng Normal bị báo
+  nhầm, đây là mặt trái của Recall cao.
+  Ngược lại, khi model nói "Normal" thì 96% là đúng. Model rất đáng tin khi
+  kết luận một luồng là an toàn.
+
+6.6. ROC-AUC = 0,9554
+  ROC-AUC đo khả năng xếp hạng: chọn ngẫu nhiên một luồng Attack và một luồng
+  Normal, thì 95,5% trường hợp model cho luồng Attack điểm nghi ngờ cao hơn.
+  AUC cao trong khi Precision thấp cho thấy model phân biệt khá tốt. Vấn đề nằm
+  nhiều ở ngưỡng quyết định 0,5 và ở khác biệt dữ liệu giữa train và test
+  (mục 7), chứ không phải model hoàn toàn "không biết phân biệt".
+
+6.7. Accuracy train = 1,00 so với test = 0,82
+  Model đoán đúng 100% tập train nhưng chỉ khoảng 82% tập test. Đây là dấu hiệu
+  overfit (học thuộc), dễ hiểu vì các cây không giới hạn độ sâu. Khoảng cách
+  này lớn một phần cũng do phân bố dữ liệu train và test khác nhau (mục 7).
+
+
+7. PHÂN TÍCH NGUYÊN NHÂN BÁO ĐỘNG GIẢ (FP = 8.222)
+--------------------------------------------------------------------------------
+7.1. FP tập trung ở đâu
+  - Theo trạng thái kết nối (state):
+      FIN: 7.154 FP (87% tổng FP), tỷ lệ báo nhầm 30,6% luồng Normal có FIN
+      INT: 1.046 FP, tỷ lệ báo nhầm 60,5% (cao nhất)
+      CON: chỉ 13 FP trên 6.417 luồng (0,2%)
+  - Theo dịch vụ (service):
+      "-" (không xác định) 6.420 FP | http 1.468 FP (39,4%) | ftp 313 FP (41,6%)
+      dns chỉ 17 FP trên 2.914 luồng (0,6%)
+  => Báo nhầm chủ yếu xảy ra với các luồng TCP đã đóng (FIN) và các luồng
+     HTTP/FTP. Gần như không báo nhầm với DNS và các kết nối đang mở (CON).
+
+7.2. Các luồng FP "trông giống tấn công"
+  So sánh trung vị (median):
+                        TN (Normal đúng)   FP (Normal bị báo nhầm)   TP (Attack)
+      tcprtt (giây)           0,0007              0,1424               0,0807
+      dbytes                  1.080                 354                  354
+      rate (gói/giây)         798,4                  23,3                 44,0
+      dur (giây)              0,09                   0,85                 0,59
+  Các luồng Normal bị báo nhầm có đặc điểm gần như giống hệt tấn công: bắt tay
+  TCP chậm, phản hồi ít byte (cùng trung vị 354 với TP), tốc độ gói thấp, thời
+  gian kéo dài. Đây đúng là các feature model coi là quan trọng nhất (tcprtt,
+  ackdat, synack, dload, rate, dbytes...).
+
+7.3. Nguyên nhân gốc: phân bố Normal ở tập test khác tập train
+      Tỷ lệ luồng Normal có tcprtt > 0,01 giây:   train 19,0%  ->  test 41,3%
+      Tỷ lệ luồng Normal có rate < 100 gói/s:      train 33,7%  ->  test 51,6%
+      Tỷ lệ luồng Normal có state = INT:            train  3,0%  ->  test  5,4%
+  Trong tập train, Normal gần như luôn "nhanh", nên model học quy tắc
+  "bắt tay chậm / tốc độ thấp => Attack". Tập test chứa nhiều traffic Normal
+  "chậm" hơn hẳn, nên quy tắc này tạo ra nhiều báo động giả.
+  Đây là hiện tượng lệch phân bố (distribution shift) giữa 2 tập train/test của
+  UNSW-NB15. Nó phản ánh đúng thách thức thực tế: model phải chạy trên traffic
+  khác với lúc được huấn luyện.
+
+7.4. Độ tự tin của model khi báo nhầm
+  Xác suất "Attack" của các ca FP có trung vị 0,68; 25% ca FP chỉ ở mức
+  0,54-0,59. Nhiều ca FP nằm sát ngưỡng 0,5, tức là model "lưỡng lự".
+  Để tham khảo (KHÔNG dùng để chọn tham số, vì tính trên tập test):
+      ngưỡng >= 0,5 : Precision 0,676 | Recall 0,950
+      ngưỡng >= 0,6 : Precision 0,736 | Recall 0,909
+      ngưỡng >= 0,7 : Precision 0,808 | Recall 0,863
+      ngưỡng >= 0,8 : Precision 0,879 | Recall 0,806
+  Nâng ngưỡng sẽ giảm báo động giả nhưng bỏ sót nhiều tấn công hơn. Ngưỡng
+  phải được chọn trên tập validation, không chọn trên tập test.
+  (Dòng 0,5 ở đây hơi khác mục 4 vì có 286 luồng có xác suất đúng bằng 0,5
+  (50 cây đoán Normal / 50 cây đoán Attack); hàm predict() xếp các luồng này
+  vào Normal, còn phép so sánh ">= 0,5" xếp vào Attack.)
+
+
+8. FEATURE QUAN TRỌNG NHẤT (TOP 10, Gini importance)
+--------------------------------------------------------------------------------
+     1. tcprtt   0,0809   thời gian bắt tay TCP
+     2. ackdat   0,0762   thời gian SYN-ACK -> ACK
+     3. synack   0,0751   thời gian SYN -> SYN-ACK
+     4. dload    0,0705   tốc độ bit/s chiều đích -> nguồn
+     5. dinpkt   0,0639   khoảng cách giữa các gói từ đích
+     6. rate     0,0601   số gói/giây
+     7. sload    0,0487   tốc độ bit/s chiều nguồn -> đích
+     8. dbytes   0,0472   số byte đích -> nguồn
+     9. dmean    0,0442   kích thước TB gói từ đích
+    10. sbytes   0,0439   số byte nguồn -> đích
+  Top 10 chiếm 61,1% tổng importance. Model dựa chủ yếu vào thời gian bắt tay
+  TCP và lưu lượng phản hồi. Như mục 7 đã chỉ ra, đây cũng chính là nhóm feature
+  có phân bố lệch giữa train và test, nên chúng vừa là điểm mạnh vừa là nguồn
+  gây báo động giả.
+  Lưu ý: importance cho biết model dùng feature nào để chia dữ liệu, không
+  chứng minh quan hệ nhân quả.
+
+
+9. KẾT LUẬN
+--------------------------------------------------------------------------------
+  + Điểm mạnh : phát hiện tốt tấn công (Recall 94,6%, ROC-AUC 0,955). Gần như
+                không bỏ sót các loại Generic, DoS, Reconnaissance, Exploits,
+                Backdoor, Analysis, Worms.
+  - Điểm yếu  : báo động giả cao (FP 8.222, khoảng 25,7% traffic Normal),
+                Precision chỉ 68%. Model overfit (train 100% so với test 82%).
+                Yếu nhất với Fuzzers (Recall 81,6%).
+  Kết quả này là hợp lý cho một baseline sau khi đã loại bỏ các feature ô
+  nhiễm. Không nên so sánh trực tiếp với các bài báo dùng UNSW-NB15 gốc (có
+  sttl, dttl, ct_state_ttl và dữ liệu trùng lặp), vì những bài đó thường có điểm
+  cao hơn do dùng các feature ô nhiễm.
+
+
+10. ĐỀ XUẤT CHO LẦN CHẠY TIẾP THEO
+--------------------------------------------------------------------------------
+  1. Tách khoảng 20% tập train làm tập validation (stratify theo label). Mọi
+     tinh chỉnh chỉ dựa trên validation, tập test chỉ dùng một lần ở cuối.
+  2. Giảm overfit: thử max_depth, min_samples_leaf (vd. 5-20), max_features.
+  3. Chọn lại ngưỡng quyết định trên validation để cân bằng Precision/Recall
+     theo yêu cầu của hệ thống (ưu tiên ít bỏ sót hay ít báo động giả).
+  4. Thử class_weight='balanced' hoặc 'balanced_subsample'.
+  5. Đánh giá thêm theo từng loại tấn công (đặc biệt Fuzzers) và dùng
+     permutation importance để kiểm tra lại độ quan trọng của feature.
+  6. So sánh với các model khác (vd. XGBoost/LightGBM, Logistic Regression)
+     trên cùng tập feature đã làm sạch.
+================================================================================

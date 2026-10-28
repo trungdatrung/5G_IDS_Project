@@ -1,0 +1,322 @@
+================================================================================
+     PHÂN TÍCH HIỆN TƯỢNG OVERFIT VÀ HƯỚNG CẢI TIẾN - RANDOM FOREST LẦN 1
+                  Dự án 5G IDS - Bộ dữ liệu UNSW-NB15
+================================================================================
+Ngày         : 01/10/2026
+Liên quan    : reports/Bao_cao_RandomForest_lan_1.txt
+               notebooks/01_Data_Cleaning.ipynb, notebooks/02_Model_Training.ipynb
+
+
+TÓM TẮT
+--------------------------------------------------------------------------------
+Ở lần chạy 1, accuracy là 100% trên tập train nhưng chỉ 81,8% trên tập test.
+Khoảng chênh 18 điểm này KHÔNG chỉ do overfit. Thực tế có 2 hiện tượng chồng
+lên nhau:
+
+  (1) Overfit thông thường : train 100%  -> validation 92,7%   (~7 điểm)
+      Mức này bình thường với Random Forest. Điều chỉnh tham số chỉ thay đổi
+      kết quả validation trong khoảng 90,9-93,2%.
+  (2) Lệch phân bố (dataset shift) giữa tập train và tập test chính thức:
+      validation 92,7% -> test 81,5%   (~11 điểm, phần LỚN HƠN)
+      Một model phân biệt được dòng nào thuộc tập train, dòng nào thuộc tập
+      test với AUC = 0,80 (riêng traffic Normal là 0,89).
+
+Vì vậy, nếu chỉ chống overfit (giới hạn độ sâu cây, tăng min_samples_leaf...)
+thì KHÔNG giải quyết được vấn đề chính. Cải tiến cần tập trung vào:
+  - quy trình đánh giá đúng (có tập validation),
+  - chọn ngưỡng quyết định,
+  - xử lý lệch phân bố, nhất là ở traffic Normal.
+
+
+================================================================================
+PHẦN 1. RÀ SOÁT LẠI CÁC BƯỚC ĐÃ LÀM
+================================================================================
+
+Bước 1 - Làm sạch dữ liệu (notebook 01)
+  - Bỏ `id`, thu nhỏ kiểu dữ liệu (df_shrink), kiểm tra NaN (không có NaN).
+    -> Đúng, không ảnh hưởng tới overfit.
+  - Bỏ 8 feature ô nhiễm (sttl, dttl, ct_state_ttl, ...) theo bài báo của
+    D'hooge và cộng sự (PST 2022), cùng 3 feature không có khả năng phân biệt.
+    -> Đúng về phương pháp. Hệ quả: bài toán KHÓ hơn. Các feature TTL vốn giúp
+       tách 2 lớp gần như "hoàn hảo" nhưng không tổng quát được. Sau khi bỏ
+       chúng, model phải dựa vào các feature về thời gian và lưu lượng (tcprtt,
+       rate, sload, dbytes...), và chính nhóm feature này lại lệch giữa train
+       và test (xem Phần 2). Bài "Castles Built on Sand" của cùng nhóm tác giả
+       cũng ghi nhận AUROC giảm khoảng 0,1 trên UNSW-NB15 sau khi bỏ feature ô
+       nhiễm.
+  - Bỏ dòng trùng lặp và dòng mâu thuẫn.
+    -> Đúng (tránh thổi phồng điểm số). Hệ quả phụ: tỷ lệ lớp đổi khác nhau ở
+       hai tập. Train 50,4% Normal / 49,6% Attack, test 63,3% Normal / 36,7%
+       Attack. Đây là lệch phân bố nhãn (prior/label shift), ảnh hưởng trực
+       tiếp tới Precision.
+  - Chưa làm: kiểm tra dòng trùng GIỮA train và test (cross-set duplicates).
+    Việc này không gây overfit, nhưng nên kiểm tra để đảm bảo tập test độc lập.
+
+Bước 2 - Tiền xử lý (notebook 02)
+  - One-hot cho proto/service/state, fit chỉ trên tập train,
+    handle_unknown='ignore'. -> Đúng, không rò rỉ dữ liệu.
+  - Không chuẩn hóa cột số. -> Đúng với Random Forest.
+
+Bước 3 - Huấn luyện (notebook 02)
+  - RandomForest(n_estimators=100, random_state=42), tham số còn lại mặc định:
+    max_depth=None, min_samples_leaf=1, max_features='sqrt'.
+    -> Các cây mọc tới khi mỗi lá chỉ còn một lớp. Đo thực tế (model train
+       trên 80% tập train):
+         độ sâu trung bình 43,8 (tối đa 54), khoảng 5.047 lá mỗi cây
+         với khoảng 79.000 mẫu
+       Mỗi cây gần như "học thuộc" dữ liệu, nên accuracy train = 100% là điều
+       tất yếu. Bản thân điều này không phải lỗi: Random Forest được thiết kế
+       để gộp nhiều cây overfit thành một model ít overfit (Breiman, 2001).
+
+Bước 4 - Đánh giá (notebook 02)  <- ĐIỂM YẾU CHÍNH CỦA QUY TRÌNH
+  - Lần 1 KHÔNG có tập validation. Ta chỉ so sánh "train 100%" với "test 82%",
+    nên không tách được phần nào do overfit, phần nào do khác biệt dữ liệu.
+  - Accuracy trên tập train không phải là thước đo overfit có ý nghĩa với
+    Random Forest. Nên dùng OOB score (out-of-bag) hoặc validation /
+    cross-validation.
+
+
+================================================================================
+PHẦN 2. KẾT QUẢ CHẨN ĐOÁN
+================================================================================
+Lưu ý về cách đo: các phép đo A, B chỉ dùng tập train (tách 80% để train,
+20% làm validation, stratify theo label, random_state=42). Phép đo C dùng thêm
+feature của tập test nhưng KHÔNG dùng nhãn. Phép đo D chạm tập test, chỉ để
+chẩn đoán, không dùng để chọn tham số.
+
+A. Overfit thông thường: train vs validation vs OOB (cùng tham số baseline)
+                       Accuracy  Precision  Recall   F1      ROC-AUC
+    Train (80%)         1,0000    1,0000   1,0000  1,0000
+    Validation (20%)    0,9268    0,9055   0,9519  0,9281   0,9841
+    OOB score           0,9229
+  -> Trên dữ liệu CÙNG phân bố với tập train, model tổng quát hóa tốt (~92-93%).
+     Khoảng chênh train -> validation là ~7 điểm.
+
+B. Thử điều chỉnh tham số (đánh giá trên validation, không dùng tập test)
+    Tham số                               Train acc  Val acc  Val P   Val R
+    mặc định                                1,0000    0,9268  0,9055  0,9519
+    min_samples_leaf=5                      0,9495    0,9229  0,8806  0,9771
+    min_samples_leaf=20                     0,9187    0,9158  0,8624  0,9881
+    max_depth=15                            0,9325    0,9217  0,8770  0,9795
+    max_depth=10                            0,9073    0,9085  0,8448  0,9992
+    min_samples_leaf=5, max_features=0.3    0,9765    0,9316  0,9109  0,9557
+  Nhận xét:
+  - Giới hạn cây làm accuracy train giảm mạnh (100% -> 91%) nhưng accuracy
+    validation KHÔNG tăng, thậm chí giảm nhẹ. Đây là dấu hiệu khoảng chênh train
+    -> validation không phải overfit "có hại".
+  - Cây càng bị giới hạn thì model càng nghiêng về đoán Attack: Recall tăng,
+    Precision giảm. Đây là hướng NGƯỢC với điều ta cần (vấn đề của ta là báo
+    động giả).
+  - Cấu hình tốt nhất trên validation (min_samples_leaf=5, max_features=0.3)
+    chỉ hơn baseline 0,5 điểm. Tinh chỉnh tham số đơn thuần sẽ chỉ cải thiện
+    nhỏ.
+
+C. Lệch phân bố giữa train và test (adversarial validation)
+  Cách làm: gộp feature của 2 tập, gán nhãn "0 = từ train, 1 = từ test", rồi
+  train Random Forest để đoán nguồn gốc mỗi dòng (3-fold CV). Nếu 2 tập cùng
+  phân bố thì AUC ~ 0,5.
+    Toàn bộ dữ liệu    AUC = 0,8020
+    Chỉ traffic Normal AUC = 0,8894   <- lệch mạnh nhất
+    Chỉ traffic Attack AUC = 0,7030
+  Feature phân biệt train/test rõ nhất: sinpkt, sload, sbytes, dinpkt, dur,
+  rate, ackdat, dload. Đây trùng với nhóm feature quan trọng nhất của model
+  phát hiện tấn công.
+  Ví dụ cụ thể (từ báo cáo lần 1):
+    Normal có tcprtt > 0,01 s :  train 19,0%  ->  test 41,3%
+    Normal có rate < 100 gói/s:  train 33,7%  ->  test 51,6%
+  -> Model học được quy tắc "chậm / tốc độ thấp => Attack" trên tập train. Quy
+     tắc này đúng trên dữ liệu train, nhưng tập test có nhiều traffic Normal
+     "chậm" hơn hẳn, nên phát sinh báo động giả.
+  Ghi chú: Moustafa & Slay (2016) kết luận train/test của UNSW-NB15 có đặc tính
+  thống kê tương thích (độ lệch, độ nhọn). Phân tích của họ làm trên dữ liệu
+  gốc. Sau khi bỏ dòng trùng và bỏ feature ô nhiễm, phép đo của ta cho thấy hai
+  tập phân biệt được khá rõ.
+
+D. Cùng một model baseline: validation vs test
+                     Accuracy  Precision  Recall   F1
+    Validation        0,9268    0,9055   0,9519  0,9281
+    Test              0,8145    0,6765   0,9465  0,7891
+  -> Recall gần như giữ nguyên (95%), nhưng Precision rơi từ 0,91 xuống 0,68.
+     Toàn bộ sự sụt giảm đến từ phía traffic Normal.
+
+E. Tách Precision giảm thành 2 nguyên nhân (ước lượng)
+  - Tỷ lệ báo nhầm Normal (FPR): validation ~10%, test 25,7%  (tăng ~2,5 lần).
+  - Nếu FPR vẫn giữ ~10% nhưng tỷ lệ lớp như tập test (63% Normal), Precision
+    sẽ khoảng 17.530 / (17.530 + 0,10 x 32.034) ~ 0,85.
+  => Từ 0,91 xuống ~0,85: do tỷ lệ Normal/Attack khác nhau (base rate).
+     Từ ~0,85 xuống 0,68: do traffic Normal ở tập test có đặc điểm khác
+     (covariate shift). Đây là nguyên nhân lớn hơn.
+
+
+================================================================================
+PHẦN 3. LÝ GIẢI HIỆN TƯỢNG "OVERFIT"
+================================================================================
+1. Accuracy train = 100% là đặc tính của Random Forest với cây không giới hạn,
+   không phải bằng chứng của overfit có hại. OOB và validation (~92-93%) mới
+   là ước lượng đúng trên dữ liệu cùng phân bố.
+
+2. Phần lớn khoảng chênh (validation 92,7% -> test 81,5%) là do lệch phân bố
+   giữa 2 tập:
+   a) Lệch đặc trưng (covariate shift): traffic Normal ở tập test chậm hơn,
+      thưa gói hơn, ít byte phản hồi hơn. Nó nằm ở vùng mà tập train gần như
+      chỉ có Attack.
+   b) Lệch tỷ lệ lớp (prior shift): train 50/50, test 63/37. Với cùng tỷ lệ
+      báo nhầm, tập test có nhiều Normal hơn nên có nhiều FP tuyệt đối hơn,
+      dẫn tới Precision thấp hơn (Arp và cộng sự gọi đây là "base rate fallacy").
+
+3. Việc bỏ feature ô nhiễm khiến model phải dựa vào nhóm feature thời gian /
+   lưu lượng, vốn nhạy với điều kiện mạng. Đây là cái giá cần trả để có kết
+   quả trung thực. Không nên đưa lại các feature ô nhiễm.
+
+4. Quy trình lần 1 thiếu tập validation, nên ta đã quy nhầm toàn bộ khoảng
+   chênh cho overfit.
+
+
+================================================================================
+PHẦN 4. HƯỚNG GIẢI QUYẾT KHẢ THI (theo thứ tự ưu tiên)
+================================================================================
+[1] SỬA QUY TRÌNH ĐÁNH GIÁ (bắt buộc, làm trước tiên)
+  - Tách validation từ tập train (stratified 80/20), hoặc dùng 5-fold
+    StratifiedKFold. Luôn báo cáo bộ ba: train / validation (hoặc OOB) / test.
+  - Bật oob_score=True để có ước lượng không tốn thêm dữ liệu.
+  - Tập test chỉ dùng MỘT lần cho cấu hình cuối cùng. Mọi lựa chọn (tham số,
+    ngưỡng, feature) đều dựa trên validation, để tránh "data snooping"
+    (Arp và cộng sự, pitfall P3).
+  - Báo cáo thêm các chỉ số ít phụ thuộc tỷ lệ lớp: ROC-AUC, PR-AUC, balanced
+    accuracy, FPR (pitfall P7, P8).
+
+[2] TINH CHỈNH THAM SỐ RANDOM FOREST (cải thiện nhỏ, chi phí thấp)
+  Theo Probst, Wright & Boulesteix (2019), các tham số đáng tinh chỉnh nhất là:
+    - max_features (mtry)          : thử 0,1 / 'sqrt' / 0,3 / 0,5
+    - min_samples_leaf (node size) : 1 / 2 / 5 / 10
+    - max_samples (kích thước mẫu cho mỗi cây) : 0,5 / 0,7 / 1,0
+    - class_weight : None / 'balanced' / 'balanced_subsample'
+  n_estimators không cần tinh chỉnh: càng nhiều càng ổn định, nhưng sau vài
+  trăm cây gần như không cải thiện thêm (Oshiro và cộng sự, 2012; Probst và
+  cộng sự, 2019). Dùng 300 cây là đủ.
+  Phương pháp: RandomizedSearchCV với 30-50 tổ hợp, 5-fold CV trên tập train,
+  scoring='f1' hoặc 'average_precision' (Bergstra & Bengio, 2012: random
+  search hiệu quả hơn grid search). Có thể dùng Optuna nếu muốn tối ưu Bayes.
+  Kỳ vọng: validation tăng khoảng 0,5-1 điểm. KHÔNG giải quyết lệch phân bố.
+
+[3] CHỌN NGƯỠNG QUYẾT ĐỊNH (cải thiện lớn nhất cho Precision, rất dễ làm)
+  - ROC-AUC trên test vẫn là 0,955, nghĩa là model xếp hạng tốt nhưng ngưỡng
+    0,5 không phù hợp.
+  - Dùng TunedThresholdClassifierCV (scikit-learn >= 1.5). Công cụ này tìm
+    ngưỡng tối ưu bằng cross-validation trên tập train, theo một chỉ số
+    (F1, balanced accuracy) hoặc theo hàm chi phí, vd. "1 lần bỏ sót tấn công
+    = k lần báo động giả".
+  - Khi chọn ngưỡng, tính tới tỷ lệ Normal/Attack của môi trường triển khai,
+    không dùng mặc định 50/50.
+
+[4] XỬ LÝ LỆCH PHÂN BỐ (hướng nghiên cứu chính)
+  a) Tạo tập validation "giống test": dùng adversarial validation (chỉ dùng
+     feature tập test, không dùng nhãn) để chọn ra các dòng train giống tập
+     test nhất làm validation. Validation khi đó phản ánh sát hơn hiệu năng
+     thực tế. Cần ghi rõ trong báo cáo vì đây là kỹ thuật bán-transductive.
+  b) Trọng số theo độ lệch (importance weighting cho covariate shift,
+     Quiñonero-Candela và cộng sự, 2009): ước lượng
+     w(x) ~ P(test|x) / P(train|x) bằng chính model adversarial, rồi truyền
+     vào sample_weight khi fit. Như vậy model chú ý hơn tới các mẫu train
+     giống traffic test. Cũng dùng feature (không nhãn) của test, nên cần ghi
+     chú tương tự.
+  c) Feature bền vững hơn: thử các đặc trưng tỷ lệ (dbytes/sbytes,
+     byte/gói, dpkts/spkts), vì tỷ lệ thường ít phụ thuộc tốc độ mạng hơn giá
+     trị tuyệt đối. Thử loại bớt các feature lệch mạnh nhất (sinpkt, sload,
+     dur...) VÀ so sánh trên validation. Chỉ giữ thay đổi nếu validation không
+     giảm.
+  d) Kiểm tra dòng trùng giữa train và test để chắc tập test độc lập.
+
+[5] SO SÁNH VỚI MODEL KHÁC (sau khi quy trình đã đúng)
+  - HistGradientBoostingClassifier (có sẵn trong scikit-learn, có early
+    stopping), XGBoost (Chen & Guestrin, 2016), LightGBM (Ke và cộng sự, 2017).
+  - Giữ nguyên tập feature đã làm sạch, cùng quy trình validation và cùng tập
+    test.
+
+[6] DIỄN GIẢI VÀ BÁO CÁO
+  - Bổ sung permutation importance, tính trên validation. MDI (Gini) thiên vị
+    feature liên tục và có thể đánh giá cao feature mà model dùng để overfit
+    (Strobl và cộng sự, 2007; tài liệu scikit-learn).
+  - Phân tích lỗi theo loại tấn công (Fuzzers có Recall thấp nhất, 81,6%).
+  - Khi so sánh với các bài báo khác, nêu rõ ta dùng dữ liệu đã bỏ feature ô
+    nhiễm và dòng trùng, nên điểm số thấp hơn là điều dự kiến (D'hooge và cộng
+    sự, 2022).
+  - Hướng dài hạn cho đề tài 5G: đánh giá chéo dataset (train UNSW-NB15, test
+    trên dataset khác), vì Layeghy & Portmann (2023) cho thấy NIDS thường
+    không tổng quát được giữa các dataset.
+
+KẾ HOẠCH THỰC NGHIỆM ĐỀ XUẤT CHO LẦN 2
+  Bước 1: thêm validation + OOB vào notebook 02, chạy lại baseline để có bộ ba
+          train / validation / test.
+  Bước 2: RandomizedSearchCV (mục [2]) và chọn cấu hình theo validation.
+  Bước 3: TunedThresholdClassifierCV (mục [3]).
+  Bước 4: đánh giá một lần trên test, so sánh với lần 1 (Precision, FPR,
+          F1, PR-AUC).
+  Bước 5 (tùy chọn): thử [4b] importance weighting và [4c] feature tỷ lệ,
+          báo cáo riêng như một thực nghiệm về lệch phân bố.
+
+
+================================================================================
+PHẦN 5. TÀI LIỆU THAM KHẢO
+================================================================================
+Về dữ liệu và feature ô nhiễm
+ [1] D'hooge, L., Verkerken, M., Wauters, T., Volckaert, B., De Turck, F. (2022).
+     Discovering non-metadata contaminant features in intrusion detection
+     datasets. 19th Annual Int. Conf. on Privacy, Security & Trust (PST).
+     doi:10.1109/PST55820.2022.9851974  (bản PDF: References/PST_CR.pdf)
+ [2] D'hooge, L., Verkerken, M., Wauters, T., De Turck, F. (2023). Castles Built
+     on Sand: Observations from Classifying Academic Cybersecurity Datasets
+     with Minimalist Methods.
+     https://imec-publications.be/server/api/core/bitstreams/1a9105bf-094d-4c2e-ac64-123e582a3132/content
+ [3] Moustafa, N., Slay, J. (2016). The evaluation of Network Anomaly Detection
+     Systems: Statistical analysis of the UNSW-NB15 data set and the
+     comparison with the KDD99 data set. Information Security Journal.
+     https://www.semanticscholar.org/paper/2a56ca15bea4f9a911835bfd08a2f4526091d785
+ [4] Engelen, G., Rimmer, V., Joosen, W. (2021). Troubleshooting an Intrusion
+     Detection Dataset: the CICIDS2017 Case Study. IEEE SPW.
+     https://intrusion-detection.distrinet-research.be/WTMC2021/
+
+Về phương pháp đánh giá trong ML cho an ninh mạng
+ [5] Arp, D. et al. (2022). Dos and Don'ts of Machine Learning in Computer
+     Security. USENIX Security. https://arxiv.org/pdf/2010.09470
+     (10 sai lầm phổ biến: sampling bias, data snooping, base rate fallacy...;
+      website: https://dodo-mlsec.org/)
+ [6] Layeghy, S., Portmann, M. (2023). Explainable cross-domain evaluation of
+     ML-based network intrusion detection systems. Computers & Electrical
+     Engineering 108:108692.  Bản preprint "On Generalisability of Machine
+     Learning-based Network Intrusion Detection Systems":
+     https://arxiv.org/pdf/2205.04112
+ [7] Quiñonero-Candela, J., Sugiyama, M., Schwaighofer, A., Lawrence, N. D.
+     (eds.) (2009). Dataset Shift in Machine Learning. MIT Press.
+     https://mitpress.mit.edu/9780262545877/dataset-shift-in-machine-learning/
+
+Về Random Forest và tinh chỉnh tham số
+ [8] Breiman, L. (2001). Random Forests. Machine Learning 45(1):5-32.
+     doi:10.1023/A:1010933404324
+ [9] Probst, P., Wright, M. N., Boulesteix, A.-L. (2019). Hyperparameters and
+     tuning strategies for random forest. WIREs Data Mining and Knowledge
+     Discovery 9(3):e1301. https://arxiv.org/pdf/1804.03515
+[10] Oshiro, T. M., Perez, P. S., Baranauskas, J. A. (2012). How Many Trees in a
+     Random Forest? MLDM 2012.
+     https://link.springer.com/chapter/10.1007/978-3-642-31537-4_13
+[11] Bergstra, J., Bengio, Y. (2012). Random Search for Hyper-Parameter
+     Optimization. JMLR 13:281-305. https://jmlr.org/papers/v13/bergstra12a.html
+[12] Akiba, T. et al. (2019). Optuna: A Next-generation Hyperparameter
+     Optimization Framework. KDD 2019. https://arxiv.org/pdf/1907.10902
+[13] scikit-learn: Tuning the decision threshold for class prediction
+     (TunedThresholdClassifierCV).
+     https://scikit-learn.org/stable/modules/classification_threshold.html
+[14] Strobl, C., Boulesteix, A.-L., Zeileis, A., Hothorn, T. (2007). Bias in
+     random forest variable importance measures: Illustrations, sources and a
+     solution. BMC Bioinformatics 8:25. doi:10.1186/1471-2105-8-25
+[15] scikit-learn: Permutation Importance vs Random Forest Feature Importance
+     (MDI).
+     https://scikit-learn.org/stable/auto_examples/inspection/plot_permutation_importance.html
+
+Về model so sánh
+[16] Chen, T., Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System.
+     KDD 2016. https://dl.acm.org/doi/10.1145/2939672.2939785
+[17] Ke, G. et al. (2017). LightGBM: A Highly Efficient Gradient Boosting
+     Decision Tree. NeurIPS 2017.
+     https://proceedings.neurips.cc/paper/2017/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf
+================================================================================

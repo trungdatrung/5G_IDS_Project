@@ -1,0 +1,10 @@
+﻿Thật,Normal,Analysis,Backdoor,DoS,Exploits,Fuzzers,Generic,Reconnaissance,Shellcode,Worms
+Benign,4668,0,43,240,3820,533,168,1,20,0
+HTTPFlood,3475,0,0,9839,7807,0,0,1,0,0
+ICMPFlood,154,0,0,0,0,0,0,0,0,0
+SYNFlood,1458,0,0,0,0,0,0,0,0,0
+SYNScan,157,0,0,0,0,0,0,0,0,0
+SlowrateDoS,6732,0,0,137,4100,0,0,0,0,0
+TCPConnectScan,3001,0,0,5,0,0,0,0,0,0
+UDPFlood,0,0,0,0,0,10488,0,0,0,0
+UDPScan,51,0,0,6,0,15,1,2,12,0

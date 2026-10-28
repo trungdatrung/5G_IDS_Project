@@ -1,0 +1,198 @@
+{
+  "reconstruction_identical_to_official": true,
+  "contaminating_restored": [
+    "ct_state_ttl",
+    "sttl",
+    "dttl",
+    "ct_dst_ltm",
+    "ct_srv_dst",
+    "ct_dst_src_ltm",
+    "ct_srv_src",
+    "ct_dst_sport_ltm"
+  ],
+  "n_features": {
+    "A": 31,
+    "B": 39
+  },
+  "rf_params": {
+    "min_samples_leaf": 1,
+    "max_samples": 0.7,
+    "max_features": 0.5,
+    "max_depth": 20,
+    "class_weight": null
+  },
+  "threshold": 0.5,
+  "results": {
+    "A: 31 features (official cleaned) | validation": {
+      "threshold": 0.5,
+      "accuracy": 0.9322282306564916,
+      "precision": 0.9103842059421272,
+      "recall": 0.957747912848707,
+      "f1": 0.9334656412800794,
+      "fpr": 0.09292523833416959,
+      "roc_auc": 0.9860384232208371,
+      "pr_auc": 0.9849029344601451,
+      "TN": 9039,
+      "FP": 926,
+      "FN": 415,
+      "TP": 9407
+    },
+    "A: 31 features (official cleaned) | test-dev": {
+      "threshold": 0.5,
+      "accuracy": 0.8154095637384804,
+      "precision": 0.6767079074771383,
+      "recall": 0.9503561407295489,
+      "f1": 0.7905202208357647,
+      "fpr": 0.26265842542298806,
+      "roc_auc": 0.9599869511889895,
+      "pr_auc": 0.9429068807761685,
+      "TN": 11810,
+      "FP": 4207,
+      "FN": 460,
+      "TP": 8806
+    },
+    "A: 31 features (official cleaned) | test-final": {
+      "threshold": 0.5,
+      "accuracy": 0.8186204714443918,
+      "precision": 0.681307614842358,
+      "recall": 0.9490665803388367,
+      "f1": 0.7931998556998557,
+      "fpr": 0.256852094649435,
+      "roc_auc": 0.9594066818465292,
+      "pr_auc": 0.941404961153127,
+      "TN": 11903,
+      "FP": 4114,
+      "FN": 472,
+      "TP": 8795
+    },
+    "B: 39 features (+8 contaminating) | validation": {
+      "threshold": 0.5,
+      "accuracy": 0.9403648860362864,
+      "precision": 0.9259660883280757,
+      "recall": 0.9563225412339645,
+      "f1": 0.9408995291996394,
+      "fpr": 0.07536377320622177,
+      "roc_auc": 0.98889185862594,
+      "pr_auc": 0.98813143696456,
+      "TN": 9214,
+      "FP": 751,
+      "FN": 429,
+      "TP": 9393
+    },
+    "B: 39 features (+8 contaminating) | test-dev": {
+      "threshold": 0.5,
+      "accuracy": 0.8353043547047423,
+      "precision": 0.6974458204334365,
+      "recall": 0.9724800345348587,
+      "f1": 0.8123140719372577,
+      "fpr": 0.24405319348192545,
+      "roc_auc": 0.9688914834862555,
+      "pr_auc": 0.952503829458913,
+      "TN": 12108,
+      "FP": 3909,
+      "FN": 255,
+      "TP": 9011
+    },
+    "B: 39 features (+8 contaminating) | test-final": {
+      "threshold": 0.5,
+      "accuracy": 0.8345198544534093,
+      "precision": 0.6968781470292045,
+      "recall": 0.9707564476097982,
+      "f1": 0.8113275613275613,
+      "fpr": 0.24430292813885246,
+      "roc_auc": 0.9689995095922247,
+      "pr_auc": 0.9526821047175242,
+      "TN": 12104,
+      "FP": 3913,
+      "FN": 271,
+      "TP": 8996
+    }
+  },
+  "diff_B_minus_A_test_final": {
+    "pr_auc": {
+      "diff_mean": 0.011321707639578354,
+      "ci_low": 0.009255596689672112,
+      "ci_high": 0.013430200999738762,
+      "excludes_zero": true,
+      "p_two_sided": 0.0
+    },
+    "roc_auc": {
+      "diff_mean": 0.009613610569537285,
+      "ci_low": 0.008248926619380276,
+      "ci_high": 0.010974108533120804,
+      "excludes_zero": true,
+      "p_two_sided": 0.0
+    },
+    "accuracy": {
+      "diff_mean": 0.01590757000474608,
+      "ci_low": 0.01277388862521751,
+      "ci_high": 0.019301732320835364,
+      "excludes_zero": true,
+      "p_two_sided": 0.0
+    },
+    "precision": {
+      "diff_mean": 0.015579170339498582,
+      "ci_low": 0.011517948432351321,
+      "ci_high": 0.0199009189349427,
+      "excludes_zero": true,
+      "p_two_sided": 0.0
+    },
+    "recall": {
+      "diff_mean": 0.02172375292365217,
+      "ci_low": 0.0175312957719868,
+      "ci_high": 0.026119029090794936,
+      "excludes_zero": true,
+      "p_two_sided": 0.0
+    },
+    "f1": {
+      "diff_mean": 0.018146132511276603,
+      "ci_low": 0.014810746439783414,
+      "ci_high": 0.021609718751821244,
+      "excludes_zero": true,
+      "p_two_sided": 0.0
+    },
+    "fpr": {
+      "diff_mean": -0.012544353431473705,
+      "ci_low": -0.017307859990034872,
+      "ci_high": -0.007979610701303284,
+      "excludes_zero": true,
+      "p_two_sided": 0.0
+    }
+  },
+  "perm_importance_top15": {
+    "A: 31 features (official cleaned)": {
+      "ackdat": 0.0501,
+      "sbytes": 0.025709,
+      "dload": 0.020152,
+      "dbytes": 0.012538,
+      "smean": 0.011357,
+      "service": 0.011017,
+      "synack": 0.008349,
+      "tcprtt": 0.007247,
+      "dmean": 0.00629,
+      "dloss": 0.005572,
+      "state": 0.004848,
+      "rate": 0.004443,
+      "dinpkt": 0.003536,
+      "ct_src_dport_ltm": 0.003419,
+      "proto": 0.003268
+    },
+    "B: 39 features (+8 contaminating)": {
+      "sttl": 0.179798,
+      "ct_srv_dst": 0.007098,
+      "dbytes": 0.007083,
+      "ct_dst_src_ltm": 0.006474,
+      "ct_state_ttl": 0.006283,
+      "sbytes": 0.006047,
+      "dmean": 0.004229,
+      "smean": 0.003783,
+      "proto": 0.003089,
+      "sloss": 0.003064,
+      "ct_srv_src": 0.00306,
+      "swin": 0.002198,
+      "dttl": 0.002039,
+      "dload": 0.001303,
+      "service": 0.001261
+    }
+  }
+}

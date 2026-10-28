@@ -1,0 +1,148 @@
+[18:48:20] Giấu HTTPFlood
+[18:48:34]     fit    14s | 105,515 dòng
+[18:50:37]     fit   123s | 184,662 dòng
+[18:50:38] Giấu UDPFlood
+[18:51:03]     fit    25s | 134,999 dòng
+[18:53:25]     fit   141s | 214,146 dòng
+[18:53:26] Giấu SlowrateDoS
+[18:53:42]     fit    16s | 137,538 dòng
+[18:55:49]     fit   126s | 216,685 dòng
+[18:55:50] Giấu TCPConnectScan
+[18:56:17]     fit    27s | 158,401 dòng
+[18:59:04]     fit   166s | 237,548 dòng
+[18:59:05] Giấu SYNFlood
+[18:59:33]     fit    27s | 162,577 dòng
+[19:02:18]     fit   164s | 241,724 dòng
+[19:02:19] Giấu ICMPFlood
+[19:02:48]     fit    29s | 165,957 dòng
+[19:05:35]     fit   166s | 245,104 dòng
+[19:05:36] Giấu SYNScan
+[19:06:03]     fit    27s | 165,992 dòng
+[19:08:52]     fit   168s | 245,139 dòng
+[19:08:54] Giấu UDPScan
+[19:09:21]     fit    28s | 166,112 dòng
+[19:12:11]     fit   169s | 245,259 dòng
+         loai_giau  n_T_BS2 bien_the  nguong  recall_T  fpr_benign  roc_auc_benign_vs_T  recall_tan_cong_da_thay  roc_auc_toan_BS2     du_doan_A3-a
+0        HTTPFlood    64691     A3-a  0.0933    0.4979      0.0729               0.7776                   1.0000            0.9017              Cao
+1        HTTPFlood    64691     A3-b  0.1567    0.4799      0.0809               0.7003                   0.9999            0.8680              Cao
+2         UDPFlood    30656     A3-a  0.3337    1.0000      0.0775               0.9228                   0.9985            0.9816   Trung bình–cao
+3         UDPFlood    30656     A3-b  0.3449    1.0000      0.0823               0.9350                   0.9994            0.9841   Trung bình–cao
+4      SlowrateDoS    37032     A3-a  0.1978    0.8769      0.0675               0.9457                   0.9992            0.9841              Cao
+5      SlowrateDoS    37032     A3-b  0.2670    0.9487      0.0718               0.9393                   0.9994            0.9825              Cao
+6   TCPConnectScan    10028     A3-a  0.0011    0.0057      0.1201               0.8601                   1.0000            0.9898  Thấp–trung bình
+7   TCPConnectScan    10028     A3-b  0.3428    0.0053      0.0245               0.6474                   0.9997            0.9757  Thấp–trung bình
+8         SYNFlood     4929     A3-a  0.2769    1.0000      0.0788               0.9253                   0.9990            0.9948   Trung bình–cao
+9         SYNFlood     4929     A3-b  0.3108    1.0000      0.0819               0.9928                   0.9999            0.9974   Trung bình–cao
+10       ICMPFlood      462     A3-a  0.2547    1.0000      0.0768               0.9989                   0.9993            0.9976             Thấp
+11       ICMPFlood      462     A3-b  0.3410    1.0000      0.0789               0.9990                   0.9997            0.9976             Thấp
+12         SYNScan      519     A3-a  0.2503    1.0000      0.0769               0.9968                   0.9995            0.9976       Trung bình
+13         SYNScan      519     A3-b  0.3795    1.0000      0.0691               0.9935                   0.9994            0.9971       Trung bình
+14         UDPScan      209     A3-a  0.2243    0.4737      0.0772               0.7019                   0.9996            0.9970             Thấp
+15         UDPScan      209     A3-b  0.3304    0.4737      0.0804               0.8022                   0.9999            0.9970             Thấp
+{
+ "H4": {
+  "recall_T_b_tru_a": {
+   "HTTPFlood": -0.018,
+   "UDPFlood": 0.0,
+   "SlowrateDoS": 0.0719,
+   "TCPConnectScan": -0.0004,
+   "SYNFlood": 0.0,
+   "ICMPFlood": 0.0,
+   "SYNScan": 0.0,
+   "UDPScan": 0.0
+  },
+  "fpr_benign_b_tru_a": {
+   "HTTPFlood": 0.008,
+   "UDPFlood": 0.0048,
+   "SlowrateDoS": 0.0043,
+   "TCPConnectScan": -0.0956,
+   "SYNFlood": 0.0031,
+   "ICMPFlood": 0.0021,
+   "SYNScan": -0.0079,
+   "UDPScan": 0.0032
+  },
+  "loai_UNSW_giup": [
+   "SlowrateDoS"
+  ],
+  "dung": false
+ },
+ "du_doan_theo_loai": {
+  "HTTPFlood": {
+   "du_doan": "Cao",
+   "khoang": [
+    0.9,
+    1.0
+   ],
+   "recall_A3-a": 0.4979,
+   "dung": false
+  },
+  "UDPFlood": {
+   "du_doan": "Trung bình–cao",
+   "khoang": [
+    0.6,
+    0.95
+   ],
+   "recall_A3-a": 1.0,
+   "dung": false
+  },
+  "SlowrateDoS": {
+   "du_doan": "Cao",
+   "khoang": [
+    0.9,
+    1.0
+   ],
+   "recall_A3-a": 0.8769,
+   "dung": false
+  },
+  "TCPConnectScan": {
+   "du_doan": "Thấp–trung bình",
+   "khoang": [
+    0.2,
+    0.6
+   ],
+   "recall_A3-a": 0.0057,
+   "dung": false
+  },
+  "SYNFlood": {
+   "du_doan": "Trung bình–cao",
+   "khoang": [
+    0.6,
+    0.95
+   ],
+   "recall_A3-a": 1.0,
+   "dung": false
+  },
+  "ICMPFlood": {
+   "du_doan": "Thấp",
+   "khoang": [
+    0.0,
+    0.4
+   ],
+   "recall_A3-a": 1.0,
+   "dung": false
+  },
+  "SYNScan": {
+   "du_doan": "Trung bình",
+   "khoang": [
+    0.4,
+    0.8
+   ],
+   "recall_A3-a": 1.0,
+   "dung": false
+  },
+  "UDPScan": {
+   "du_doan": "Thấp",
+   "khoang": [
+    0.0,
+    0.4
+   ],
+   "recall_A3-a": 0.4737,
+   "dung": false
+  }
+ },
+ "so_du_doan_dung": 0,
+ "diem_dung": {
+  "recall_tan_cong_da_thay_min": 0.9985322813268855,
+  "lan_duoi_0.99": []
+ }
+}
