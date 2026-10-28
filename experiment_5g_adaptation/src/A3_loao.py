@@ -124,8 +124,8 @@ R['moc_A1_fpr_benign'] = {'A1-1': a1.loc['Benign', 'A1-1'], 'A1-2': a1.loc['Beni
 # ---------------------------------------------------------------- hình
 x = np.arange(len(LOAI)); w = 0.38
 fig, ax = plt.subplots(figsize=(12, 4.8))
-ax.bar(x - w / 2, A.recall_T[LOAI], w, color='#1f77b4', label='A3-a chỉ 5G: recall loại bị giấu')
-ax.bar(x + w / 2, B.recall_T[LOAI], w, color='#d62728', label='A3-b UNSW+5G: recall loại bị giấu')
+ax.bar(x - w / 2, A.recall_T[LOAI], w, color='#1f77b4', label='A3-a Pure 5G: Withheld Attack Recall')
+ax.bar(x + w / 2, B.recall_T[LOAI], w, color='#d62728', label='A3-b UNSW+5G: Withheld Attack Recall')
 ax.plot(x - w / 2, A.fpr_benign[LOAI], 'kv', ms=7, label='FPR Benign (A3-a)')
 ax.plot(x + w / 2, B.fpr_benign[LOAI], 'k^', ms=7, label='FPR Benign (A3-b)')
 for i, T in enumerate(LOAI):
@@ -133,11 +133,11 @@ for i, T in enumerate(LOAI):
     ax.add_patch(plt.Rectangle((i - 0.45, lo), 0.9, hi - lo, color='orange', alpha=0.12, lw=0))
     ax.text(i - w / 2, A.recall_T[T] + 0.02, f'{A.recall_T[T]:.2f}', ha='center', fontsize=7)
     ax.text(i + w / 2, B.recall_T[T] + 0.02, f'{B.recall_T[T]:.2f}', ha='center', fontsize=7)
-ax.axhline(1.0, color='k', ls='--', lw=1, label='A1-2: recall ≈ 1 khi đã thấy loại đó')
-ax.axhline(FPR_MAX, color='gray', ls=':', lw=1, label='giới hạn FPR 0,10')
-ax.set_xticks(x); ax.set_xticklabels([f'{T}\n(n={int(A.n_T_BS2[T]):,})'.replace(',', '.') for T in LOAI], fontsize=8)
-ax.set_ylim(0, 1.12); ax.set_ylabel('Tỷ lệ'); ax.grid(axis='y', alpha=0.3)
-ax.set_title('A3 · Leave-one-attack-out trên 5G BS2', fontsize=10)
+ax.axhline(1.0, color='k', ls='--', lw=1, label='A1-2: Recall ≈ 1.0 when seen')
+ax.axhline(FPR_MAX, color='gray', ls=':', lw=1, label='FPR constraint ≤ 0.10')
+ax.set_xticks(x); ax.set_xticklabels([f'{T}\n(n={int(A.n_T_BS2[T]):,})' for T in LOAI], fontsize=8)
+ax.set_ylim(0, 1.12); ax.set_ylabel('Rate'); ax.grid(axis='y', alpha=0.3)
+ax.set_title('A3 · Leave-One-Attack-Out on 5G BS2 (Orange shade = Pre-registered expected interval for A3-a)', fontsize=10)
 ax.legend(fontsize=7, loc='upper center', bbox_to_anchor=(0.5, -0.17), ncol=3)
 fig.tight_layout(); fig.savefig(FIG / 'A3_loao.png', dpi=130); plt.close(fig)
 

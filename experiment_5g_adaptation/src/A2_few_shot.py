@@ -159,10 +159,10 @@ R['moc_A1_toan_bo_166411_nhan'] = {k: a1.loc[k, ['roc_auc', 'fpr', 'recall']].to
 # ---------------------------------------------------------------- hình
 fig, axs = plt.subplots(1, 3, figsize=(15, 4.3))
 mau = {'A2-a': '#1f77b4', 'A2-b': '#d62728', 'A2-c': '#2ca02c', 'A2-d': '#7f7f7f'}
-ten = {'A2-a': 'A2-a chỉ 5G', 'A2-b': 'A2-b UNSW+5G (A1-2)', 'A2-c': 'A2-c UNSW+5G cân miền',
-       'A2-d': 'A2-d = A2-b, ngưỡng từ val gộp'}
-for ax, (cot, nhan, moc) in zip(axs, [('roc_auc', 'ROC-AUC trên BS2', 0.99), ('fpr', 'FPR trên BS2 (Benign)', 0.12),
-                                       ('recall', 'Recall trên BS2', None)]):
+ten = {'A2-a': 'A2-a Pure 5G', 'A2-b': 'A2-b Merged UNSW+5G (A1-2)', 'A2-c': 'A2-c Domain Balanced',
+       'A2-d': 'A2-d Joint Validation Threshold'}
+for ax, (cot, nhan, moc) in zip(axs, [('roc_auc', 'ROC-AUC on 5G BS2', 0.99), ('fpr', 'FPR on 5G BS2 (Benign)', 0.12),
+                                       ('recall', 'Recall on 5G BS2', None)]):
     for bt in mau:
         if cot == 'roc_auc' and bt == 'A2-d':
             continue                                                        # A2-d cùng model A2-b → cùng ROC-AUC
@@ -172,8 +172,8 @@ for ax, (cot, nhan, moc) in zip(axs, [('roc_auc', 'ROC-AUC trên BS2', 0.99), ('
                         color=mau[bt], alpha=0.15)
     ax.axhline(a1.loc['A1-2', cot], color='k', ls='--', lw=1, label='A1-2 (166.411 nhãn)')
     if moc is not None:
-        ax.axhline(moc, color='orange', ls=':', lw=1.2, label=f'mục tiêu {moc}')
-    ax.set_xscale('log'); ax.set_xlabel('Số nhãn 5G dùng để train (log)'); ax.set_title(nhan, fontsize=10)
+        ax.axhline(moc, color='orange', ls=':', lw=1.2, label=f'Target {moc}')
+    ax.set_xscale('log'); ax.set_xlabel('Number of 5G Training Labels (log scale)'); ax.set_title(nhan, fontsize=10)
     ax.grid(alpha=0.3)
 axs[0].legend(fontsize=7, loc='lower right'); axs[1].legend(fontsize=7, loc='upper right')
 fig.suptitle(f'A2 · Đường cong số nhãn 5G (trung bình ± 1 SD, {len(SEEDS)} seed) · ngưỡng 5G chọn trên mẫu n/4 của 5G-val',

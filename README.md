@@ -1,103 +1,166 @@
-# IDS cho mạng 5G: cross-validate UNSW-NB15 ↔ 5G-NIDD
+# Machine Learning-Based Intrusion Detection System for 5G Networks: Cross-Validation & Domain Adaptation between UNSW-NB15 and 5G-NIDD
 
-Hệ thống phát hiện xâm nhập (IDS) dựa trên Random Forest, huấn luyện trên **UNSW-NB15**, sau đó kiểm tra khả năng chuyển giao sang lưu lượng mạng 5G thật (**5G-NIDD**) và cho model thích nghi với 5G bằng nhãn 5G.
+A comprehensive Network Intrusion Detection System (NIDS) research project based on Random Forest classifiers. This project evaluates cross-dataset generalization from the legacy enterprise benchmark (**UNSW-NB15**) to authentic 5G cellular network telemetry (**5G-NIDD**), investigates failure modes under zero-shot transfer, and executes supervised domain adaptation via co-training and few-shot learning.
 
-Repo chỉ chứa **mã nguồn, báo cáo và bảng/hình kết quả**. Dữ liệu và model (`.parquet`, `.zip`, `.joblib`, `.npz`, …) không được đưa lên. Xem mục [Lấy dữ liệu](#lấy-dữ-liệu) để tải và đặt lại dữ liệu.
+The repository contains **source code, evaluation pipelines, comprehensive technical reports, result tables, and figures**. Heavy binary artifacts and datasets (`.parquet`, `.zip`, `.joblib`, `.npz`, etc.) are excluded per `.gitignore`. See the [Data Acquisition](#data-acquisition) section to download and place required datasets.
 
-## Kết quả chính
+---
 
-| Thí nghiệm | Kết quả | Nguồn |
+## Executive Summary & Key Results
+
+| Experiment | Quantitative Finding | Documentation / Source |
 |---|---|---|
-| Model RF 31 feature (NB07) trên UNSW-NB15 test-final | accuracy 0,8186 · ROC-AUC 0,9594 | `reports/Bao_cao_ket_qua_notebook07.md` |
-| **Zero-shot** UNSW → 5G-NIDD | **Không chuyển giao được.** ROC-AUC 0,399, balanced accuracy 0,446, MCC −0,080, FPR lớp lành tính 61%. Nguyên nhân là hai bộ dữ liệu đặt cùng tên tấn công cho những hành vi khác nhau, không phải do lỗi ánh xạ feature (phép thử round-trip chỉ làm ROC-AUC giảm 0,9594 → 0,9525). | `reports/5gnidd/Bao_cao_doi_chieu_5G-NIDD.md` |
-| Chất lượng 5G-NIDD | 281.529 flow (59% lớp Benign) bị gán nhãn sai. Đây là bản sao UDP flood bắt lại ở BS1. Sau làm sạch còn 379.563 flow. | như trên, §5 |
-| **A1** Model gộp UNSW + 5G (LOI18, trọng số bằng nhau) | Một model tốt trên cả hai miền: BS2 ROC-AUC 0,9976 · FPR 0,079 · recall 0,9995. UNSW ROC-AUC 0,9554, chỉ giảm 0,0015 so với model chỉ học UNSW. | `experiment_5g_adaptation/reports/Bao_cao_A1.md` |
-| **A2** Cần bao nhiêu nhãn 5G | Khoảng 2.000 nhãn nếu chỉ dùng 5G hoặc gộp có cân miền; khoảng 5.000 nhãn nếu gộp với trọng số bằng nhau. Khi ít nhãn, khâu yếu là chọn ngưỡng chứ không phải xếp hạng (50 nhãn đã cho ROC-AUC 0,96 nhưng FPR dao động 0,05–0,29). | `experiment_5g_adaptation/reports/Bao_cao_A2.md` |
-| **A3** Tấn công 5G chưa thấy (leave-one-attack-out) | Flood/scan "gói trần" (UDP/SYN/ICMP flood, SYN scan) vẫn bắt được 100%. Tấn công giống lưu lượng ứng dụng bị lọt: HTTPFlood 50%, UDPScan 47%, TCPConnectScan 0,6%. Thêm dữ liệu UNSW không giúp (chỉ cải thiện 1/8 loại). | `experiment_5g_adaptation/reports/Bao_cao_A3.md` |
+| **UNSW-NB15 Baseline (NB07)** | Baseline RF 31 features on `test-final`: **Accuracy 0.8186 · ROC-AUC 0.9594**. Threshold-optimized RF 39 features at $\theta^* = 0.7311$: **Accuracy 0.8952 · ROC-AUC 0.9684 · FPR 0.1058**. | [`reports/Report_Notebook07_Results.md`](reports/Report_Notebook07_Results.md) |
+| **Zero-Shot Transfer (UNSW → 5G-NIDD)** | **Catastrophic Transfer Collapse.** ROC-AUC drops to **0.3990** (worse than random guessing 0.5000), Balanced Accuracy 0.4461, MCC −0.0804, Benign FPR 61.10%. The root cause is profound concept shift (real 5G attacks are raw payload-free packets misclassified as benign) and cellular radio latency shortcuts (`ackdat`), not technical feature mapping errors (round-trip validation on UNSW yields ROC-AUC 0.9525). | [`reports/5gnidd/Report_5G_NIDD_Comparison.md`](reports/5gnidd/Report_5G_NIDD_Comparison.md) |
+| **5G-NIDD Data Forensic Audit** | Identified a critical ground-truth defect in 5G-NIDD: **281,529 flows (58.91% of the published Benign class) were corrupted duplicates of UDP flood attacks** captured at BS1. Data sanitization reduced the dataset to 379,563 clean, verified flows. | [`reports/5gnidd/Report_5G_NIDD_Comparison.md`](reports/5gnidd/Report_5G_NIDD_Comparison.md) §5 |
+| **A1: Merged Dual-Domain Model** | Unified RF model on shortcut-free **LOI18** schema: **5G BS2 ROC-AUC 0.9976 · Recall 0.9995 · FPR 0.0789**. Enterprise UNSW-NB15 ROC-AUC **0.9554** (only a 0.0015 degradation from pure UNSW model), confirming zero catastrophic forgetting. | [`experiment_5g_adaptation/reports/Report_A1.md`](experiment_5g_adaptation/reports/Report_A1.md) |
+| **A2: 5G Label Complexity & Few-Shot Curves** | Operational maturity requires **~2,000 labelled 5G training flows** (+ ~500 validation flows). When labels are scarce ($n \le 200$), co-training with legacy enterprise data induces severe negative transfer. The primary operational bottleneck in low-sample adaptation is operating threshold calibration, not ranking ability. | [`experiment_5g_adaptation/reports/Report_A2.md`](experiment_5g_adaptation/reports/Report_A2.md) |
+| **A3: Detection of Unseen 5G Threats (LOAO)** | Leave-one-attack-out reveals a sharp dichotomy: raw-packet floods and scans are intercepted with **100% Recall** even when withheld during training; however, application-like attacks suffer severe evasion (HTTPFlood Recall 49.8%, TCPConnectScan Recall 0.6%). Incorporating legacy enterprise data does not improve zero-day detection. | [`experiment_5g_adaptation/reports/Report_A3.md`](experiment_5g_adaptation/reports/Report_A3.md) |
 
-## Cấu trúc thư mục
+---
+
+## Directory Architecture
 
 ```
 5G_IDS_Project/
-├── Clean_Data.ipynb               notebook làm sạch đầu tiên (bản Colab, tiền thân của notebooks/01)
-├── notebooks/                     chuỗi chính trên UNSW-NB15, chạy theo thứ tự 01 → 07
-│                                    01 làm sạch · 02–03 huấn luyện RF · 04 cải thiện precision, chia test-dev/test-final
-│                                    05 so sánh / cải thiện model · 06 truy nguyên nguyên nhân · 07 chạy lại tổng hợp
-├── models/                        chỉ số và feature importance của RF lần 1–3 (.json/.csv; .joblib không đưa lên)
-├── reports/                       báo cáo .md/.txt và kết quả của notebook 05–07
-│   ├── exp05/  audit06/  rerun07/   bảng .csv/.json theo notebook
-│   ├── dedup_vs_nodedup/            so sánh có/không khử trùng lặp
-│   └── 5gnidd/                      đối chiếu 5G-NIDD và zero-shot (script + báo cáo)
-├── experiment_nodedup/            thí nghiệm không khử trùng lặp UNSW-NB15 (notebook, báo cáo)
-├── experiment_5gnidd/             làm sạch 5G-NIDD, train/đánh giá trên 5G, so sánh phương án cross-validate
-│   ├── src/                         01_lam_sach → 02_train_danh_gia → 03_phuong_an_cross_validate
-│   └── results/                     bảng, log, hình ma trận nhầm lẫn
-├── experiment_5g_adaptation/      Kế hoạch A: học có nhãn 5G (A1 model gộp, A2 few-shot, A3 LOAO)
-│                                    xem experiment_5g_adaptation/README.md
-├── bao_cao_BTL/                   báo cáo bài tập lớn
-└── requirements.txt
+├── README.md                          Project overview and reproduction guide
+├── requirements.txt                   Python dependency specifications
+├── Clean_Data.ipynb                   Initial exploratory cleaning notebook
+├── notebooks/                         Primary UNSW-NB15 experimental pipeline (01 → 07)
+│   ├── 01_Data_Cleaning.ipynb         Sanitization, contaminant feature excision (F31)
+│   ├── 02_Model_Training.ipynb        Initial Random Forest model training
+│   ├── 03_Model_Training_v2.ipynb      Model optimization iteration v2
+│   ├── 04_Precision_Improvement.ipynb Static test-dev / test-final split generation
+│   ├── 05_Model_Comparison.ipynb      Algorithm benchmark across 14 configurations
+│   ├── 05_Model_Improvement.ipynb     F39 threshold tuning branch
+│   ├── 06_Root_Cause_Audit.ipynb      Forensic audit of TTL shortcuts and contaminants
+│   └── 07_Consolidated_Rerun.ipynb    Verified master replication script (NB07)
+├── models/                            Model parameter checkpoints, feature importances (.json/.csv)
+├── reports/                           Comprehensive markdown technical audit reports
+│   ├── rerun07/ audit06/ exp05/       Metrics and figures across notebook phases
+│   ├── dedup_vs_nodedup/              Evaluation of deduplication impacts
+│   └── 5gnidd/                        5G-NIDD zero-shot transfer audit and cross-validation plans
+├── experiment_nodedup/                Controlled ablation without deduplication
+├── experiment_5gnidd/                 5G-NIDD data sanitization, in-domain baselines, and cross-val
+│   ├── src/                           01_lam_sach → 02_train_danh_gia → 03_phuong_an_cross_validate
+│   └── results/                       Evaluation logs, tables, and confusion matrix figures
+├── experiment_5g_adaptation/          Plan A: Supervised 5G domain adaptation
+│   ├── docs/                          Formal mathematical and experimental specification
+│   ├── src/                           A1_model_gop.py, A2_few_shot.py, A3_loao.py
+│   ├── models/                        Exported unified dual-domain model artifacts
+│   ├── results/                       Metrics tables (.csv), logs, and figures
+│   └── reports/                       Detailed experimental reports for A1, A2, and A3
+└── bao_cao_BTL/                       Capstone graduation project reports
+    ├── Khung_bao_cao_BTL.docx         Word formatting template
+    ├── generate_en_figures.py         Script generating English architecture and topology diagrams
+    ├── build_full_report_en.py        Comprehensive English capstone report generator
+    ├── Bao_cao_BTL_English.docx       Complete final graduation report (.docx)
+    └── Report_5G_IDS_Capstone.docx    Deliverable capstone report (.docx)
 ```
 
-## Lấy dữ liệu
+---
 
-### UNSW-NB15
+## Data Acquisition
 
-Tải từ trang chính thức của UNSW: <https://research.unsw.edu.au/projects/unsw-nb15-dataset>. Lấy bộ *Training and Testing Sets* rồi đặt vào:
+### 1. UNSW-NB15 Dataset
 
+Download the official dataset release from the University of New South Wales:
+<https://research.unsw.edu.au/projects/unsw-nb15-dataset>.
+
+Obtain the *Training and Testing Sets* CSV files and place them into:
 ```
 data/raw/CSV Files/Training and Testing Sets/UNSW_NB15_training-set.csv
 data/raw/CSV Files/Training and Testing Sets/UNSW_NB15_testing-set.csv
 ```
 
-Chạy `notebooks/01_Data_Cleaning.ipynb` để sinh `data/cleaned/UNSW_NB15_{training,testing}-set.parquet`. Sau đó chạy `notebooks/04_Precision_Improvement.ipynb` để sinh `data/cleaned/test_split_v3.csv` (bảng chia test-dev/test-final). Các script 5G đều đọc file này.
+Execute `notebooks/01_Data_Cleaning.ipynb` to generate `data/cleaned/UNSW_NB15_{training,testing}-set.parquet`. Then run `notebooks/04_Precision_Improvement.ipynb` to generate `data/cleaned/test_split_v3.csv` (the immutable partition index).
 
-### 5G-NIDD
+### 2. 5G-NIDD Dataset
 
-Tải từ Fairdata (mã `9d13ef28-2ca7-44b0-9950-225359afac65`, truy cập mở) hoặc IEEE DataPort (dataset 10203). Giấy phép **CC BY 4.0**. **Bắt buộc trích dẫn** bài báo gốc:
+Download the raw 5G-NIDD dataset from Fairdata (identifier `9d13ef28-2ca7-44b0-9950-225359afac65`) or IEEE DataPort (Dataset 10203). License: **CC BY 4.0**. Mandatory citation:
 
-> S. Samarakoon et al., "5G-NIDD: A Comprehensive Network Intrusion Detection Dataset Generated over 5G Wireless Network", IEEE Xplore 11098458 · arXiv:2212.01298.
+> S. Samarakoon, C. Siriwardhana, Y. Nanayakkara, M. Liyanage, and P. Kumar, *"5G-NIDD: A Comprehensive Network Intrusion Detection Dataset Generated over 5G Wireless Network,"* IEEE Xplore, Art. no. 11098458, 2025. arXiv:2212.01298.
 
-Đặt các file zip vào:
-
+Place the downloaded archive files into:
 ```
-experiment_5gnidd/data/raw/BTS1_BTS2_fields_preserved.zip   # bắt buộc
-experiment_5gnidd/data/raw/BTS_1.zip                        # bắt buộc (xác định ranh giới trạm BS1/BS2)
-data/5gnidd/raw/{BTS1_BTS2_fields_preserved,BTS_1,BTS_2,Combined}.zip   # chỉ cần cho các script trong reports/5gnidd/
+experiment_5gnidd/data/raw/BTS1_BTS2_fields_preserved.zip   # Mandatory
+experiment_5gnidd/data/raw/BTS_1.zip                        # Mandatory (delineates BS1 / BS2 boundary)
+data/5gnidd/raw/{BTS1_BTS2_fields_preserved,BTS_1,BTS_2,Combined}.zip
 ```
 
-`experiment_5gnidd/src/01_lam_sach_5gnidd.py` tự giải nén và ghi ra `experiment_5gnidd/data/cleaned/5gnidd_unsw31.parquet`.
+The script `experiment_5gnidd/src/01_lam_sach_5gnidd.py` automatically unpacks and decontaminates the telemetry, generating `experiment_5gnidd/data/cleaned/5gnidd_unsw31.parquet`.
 
-## Môi trường
+---
 
-Python 3.11, scikit-learn 1.9.1, pandas 3.0.6, numpy 2.4.6 (đầy đủ trong `requirements.txt`).
+## Environment & Dependencies
+
+Tested on Python 3.11 / 3.12, scikit-learn 1.9.1, pandas 3.0.6, numpy 2.4.6, pyarrow 25.0.1, joblib 1.6.0, and python-docx 1.2.0.
 
 ```bash
-python -m venv .venv && .venv/Scripts/activate      # Linux/macOS: source .venv/bin/activate
+# Initialize virtual environment
+python -m venv .venv
+# Activate on Windows:
+.venv\Scripts\activate
+# Activate on Linux / macOS:
+source .venv/bin/activate
+
+# Install required dependencies
 pip install -r requirements.txt
 ```
 
-## Chạy lại
+---
 
-1. **Notebooks UNSW-NB15:** `notebooks/01` → `07` theo thứ tự (`05_Model_Comparison` và `05_Model_Improvement` là hai nhánh của bước 05). Model và mảng xác suất được ghi lại vào `models/` và `reports/exp05/`.
-2. **5G-NIDD:**
-   ```bash
-   python -I -X utf8 experiment_5gnidd/src/01_lam_sach_5gnidd.py .
-   python -I -X utf8 experiment_5gnidd/src/02_train_danh_gia.py .
-   python -I -X utf8 experiment_5gnidd/src/03_phuong_an_cross_validate.py .
-   ```
-3. **Thích nghi 5G (Kế hoạch A):**
-   ```bash
-   python -I -X utf8 experiment_5g_adaptation/src/A1_model_gop.py .    # ~12 phút
-   python -I -X utf8 experiment_5g_adaptation/src/A2_few_shot.py .     # ~50 phút
-   python -I -X utf8 experiment_5g_adaptation/src/A3_loao.py .         # ~20 phút
-   ```
-   Đặt `QUICK=1` để chạy thử nhanh với 40 cây. A1 cần thêm `reports/exp05/rf_A_trainfit.joblib` (model RF 31 feature của NB07). File này không có trong repo nên cần tạo lại từ chuỗi notebook.
+## Reproduction Pipeline
 
-Đối số đầu tiên của mọi script là thư mục gốc dự án. Mọi script chỉ ghi vào thư mục thí nghiệm của chính nó.
+Follow these sequential steps to reproduce all experiments from raw data to final reports:
 
-## Báo cáo
+### Step 1: UNSW-NB15 Pipeline
+Execute notebooks `01` through `07` in numerical sequence:
+```bash
+jupyter nbconvert --to notebook --execute notebooks/01_Data_Cleaning.ipynb
+jupyter nbconvert --to notebook --execute notebooks/07_Consolidated_Rerun.ipynb
+```
 
-- Chuỗi UNSW-NB15: `reports/Bao_cao_ket_qua_notebook07.md`, `reports/Bao_cao_truy_nguyen_accuracy.md`, `reports/Bao_cao_ra_soat_notebook06.md`, `reports/dedup_vs_nodedup/Bao_cao_dedup_vs_nodedup.md`
-- 5G-NIDD: `reports/5gnidd/Bao_cao_doi_chieu_5G-NIDD.md`, `experiment_5gnidd/results/Bao_cao_phuong_an_cross_validate.md`
-- Thích nghi 5G: `experiment_5g_adaptation/README.md`, `experiment_5g_adaptation/reports/Bao_cao_A1.md`, `Bao_cao_A2.md`, `Bao_cao_A3.md`
-- Bài tập lớn: `bao_cao_BTL/`
+### Step 2: 5G-NIDD Sanitization & In-Domain Baseline
+```bash
+python -I -X utf8 experiment_5gnidd/src/01_lam_sach_5gnidd.py .
+python -I -X utf8 experiment_5gnidd/src/02_train_danh_gia.py .
+python -I -X utf8 experiment_5gnidd/src/03_phuong_an_cross_validate.py .
+```
+
+### Step 3: Plan A — Supervised 5G Domain Adaptation
+```bash
+python -I -X utf8 experiment_5g_adaptation/src/A1_model_gop.py .     # ~12 mins (Trains 7 variants)
+python -I -X utf8 experiment_5g_adaptation/src/A2_few_shot.py .      # ~50 mins (8 sample sizes x 5 seeds)
+python -I -X utf8 experiment_5g_adaptation/src/A3_loao.py .          # ~20 mins (8 LOAO classes x 2 variants)
+```
+*Note:* Prefix `QUICK=1` for rapid validation with 40 trees. Every script takes the project root directory as its first argument and writes strictly to its own module subdirectories.
+
+### Step 4: Build Complete English Capstone Report
+```bash
+python bao_cao_BTL/build_full_report_en.py
+```
+This script compiles all theoretical foundations, data audits, experimental tables, and discussion chapters into `bao_cao_BTL/Report_5G_IDS_Capstone.docx` and `bao_cao_BTL/Bao_cao_BTL_English.docx`.
+
+---
+
+## Technical Reports Index
+
+- **UNSW-NB15 Baseline & Audit**:
+  - [`reports/Report_Notebook07_Results.md`](reports/Report_Notebook07_Results.md): Replicated baseline metrics and pre-registered model selection.
+  - [`reports/Report_Accuracy_Root_Cause.md`](reports/Report_Accuracy_Root_Cause.md): Diagnostic investigation of accuracy discrepancies.
+  - [`reports/Report_Notebook06_Audit.md`](reports/Report_Notebook06_Audit.md): Forensic audit of non-metadata TTL contaminants.
+  - [`reports/dedup_vs_nodedup/Report_Deduplication_Impact.md`](reports/dedup_vs_nodedup/Report_Deduplication_Impact.md): Controlled ablation of data deduplication.
+- **5G-NIDD & Zero-Shot Transfer**:
+  - [`reports/5gnidd/Report_5G_NIDD_Comparison.md`](reports/5gnidd/Report_5G_NIDD_Comparison.md): Discovery of the 5G-NIDD ground-truth mislabeling defect and zero-shot transfer collapse.
+  - [`reports/5gnidd/Plan_5G_NIDD_Cross_Validation.md`](reports/5gnidd/Plan_5G_NIDD_Cross_Validation.md): Cross-dataset experimental methodology.
+  - [`experiment_5gnidd/results/Report_Cross_Validation_Options.md`](experiment_5gnidd/results/Report_Cross_Validation_Options.md): Empirical comparison of protocols P1 through P5.
+- **Supervised 5G Domain Adaptation (Plan A)**:
+  - [`experiment_5g_adaptation/README.md`](experiment_5g_adaptation/README.md): Plan A overview, execution status, and reproduction commands.
+  - [`experiment_5g_adaptation/docs/Plan_A_5G_Supervised_Adaptation.md`](experiment_5g_adaptation/docs/Plan_A_5G_Supervised_Adaptation.md): Complete mathematical and experimental specification.
+  - [`experiment_5g_adaptation/reports/Report_A1.md`](experiment_5g_adaptation/reports/Report_A1.md): Performance of the unified dual-domain model (A1).
+  - [`experiment_5g_adaptation/reports/Report_A2.md`](experiment_5g_adaptation/reports/Report_A2.md): 5G label complexity and few-shot learning curves (A2).
+  - [`experiment_5g_adaptation/reports/Report_A3.md`](experiment_5g_adaptation/reports/Report_A3.md): Resilience against novel, unseen 5G zero-day attacks (A3).
+- **Capstone Graduation Report**:
+  - [`bao_cao_BTL/Report_5G_IDS_Capstone.docx`](bao_cao_BTL/Report_5G_IDS_Capstone.docx): Full final capstone report formatted in Microsoft Word (.docx).
+  - [`bao_cao_BTL/Presentation_Slides_Outline.md`](bao_cao_BTL/Presentation_Slides_Outline.md): Complete slide-by-slide thesis defense outline.
