@@ -1,65 +1,60 @@
-# experiment_nodedup — làm sạch KHÔNG bỏ dòng trùng
+# experiment_nodedup — Ablation Study: Cleaning Without Deduplication
 
-Thư mục này **độc lập hoàn toàn** với phần còn lại của project.
+This module is **fully decoupled** from the rest of the project:
+- Reads strictly from `../data/raw/` and `../data/cleaned/` (benchmark test partition) alongside `../models/random_forest_v2_metrics.json` (to inherit the exact hyperparameters of round 2).
+- Writes strictly within `experiment_nodedup/`.
+- Leaves `../notebooks/`, `../data/cleaned/`, `../models/`, and `../reports/` completely untouched.
 
-- Chỉ **đọc** `../data/raw/` và `../data/cleaned/` (tập đánh giá đối chứng) và
-  `../models/random_forest_v2_metrics.json` (để lấy đúng bộ siêu tham số của lần 2).
-- **Không ghi** bất cứ thứ gì ra ngoài `experiment_nodedup/`.
-- `../notebooks/`, `../data/cleaned/`, `../models/`, `../reports/` không bị động tới.
+---
 
-## Câu hỏi của thực nghiệm
+## Research Question
 
-Vấn đề nằm ở **dữ liệu** hay ở **thuật toán train**?
+Is observed performance variance driven by the **underlying data distribution** or the **learning algorithm**?
 
-Để quy được trách nhiệm, thuật toán phải **giữ nguyên tuyệt đối**: cùng cấu hình
-Random Forest, cùng tiền xử lý, cùng cách chia, cùng seed, cùng chỉ số. Thứ duy
-nhất thay đổi là bộ dữ liệu huấn luyện. Nếu đổi cả hai cùng lúc thì không kết luận
-được gì.
+To rigorously isolate causal attribution, the algorithm and evaluation protocol are held strictly invariant: identical Random Forest hyperparameter configuration, identical preprocessing steps, identical partitioning scheme, identical random seed (42), and identical evaluation metrics. The only variable factor is the training set deduplication strategy.
 
-## Các biến thể làm sạch
+---
 
-Đều bỏ `id`, thu nhỏ kiểu dữ liệu, bỏ 8 cột ô nhiễm (`sttl`, `dttl`,
-`ct_state_ttl`, `ct_dst_ltm`, `ct_srv_dst`, `ct_dst_src_ltm`, `ct_srv_src`,
-`ct_dst_sport_ltm`) và 3 cột không phân biệt được — **giống hệt notebook 01**.
-Khác nhau ở bước xoá dòng:
+## Data Cleaning Variants
 
-| Biến thể | Bỏ dòng trùng | Bỏ dòng mâu thuẫn | Dùng để |
+All variants remove `id`, downcast numeric dtypes, and excise the 8 contaminated columns (`sttl`, `dttl`, `ct_state_ttl`, `ct_dst_ltm`, `ct_srv_dst`, `ct_dst_src_ltm`, `ct_srv_src`, `ct_dst_sport_ltm`) alongside 3 non-discriminative features—matching the exact sanitization pipeline of Notebook 01.
+
+They differ solely in their deduplication and contradiction removal rules:
+
+| Variant | Remove Duplicates | Remove Contradictions | Purpose |
 |---|---|---|---|
-| `V1_nodedup` | **không** | có | Biến thể chính — đúng yêu cầu "không xoá dòng trùng" |
-| `V2_nodedup_nocontra` | **không** | **không** | Biến thể cực đoan, không xoá dòng nào |
-| `V0_official_recipe` | có | có | Đối chứng — phải tái lập đúng `../data/cleaned` |
+| `V1_nodedup` | **No** | Yes | Primary variant: Evaluates learning without record deduplication |
+| `V2_nodedup_nocontra` | **No** | **No** | Extreme baseline: Retains all duplicates and contradictory labels |
+| `V0_official_recipe` | Yes | Yes | Control baseline: Replicates the official cleaned dataset |
 
-`V0` tồn tại để tự kiểm tra: hàm làm sạch ở đây phải dựng lại **trùng khít từng giá
-trị** với bộ cleaned chính thức. Nếu assert đó fail thì mọi so sánh phía sau vô nghĩa.
+`V0` serves as a strict internal sanity check: the sanitization function must reconstruct the official cleaned dataset with bit-for-bit equality.
 
-## Hai cách đánh giá
+---
 
-Kết quả chỉ đọc được nếu phân biệt rạch ròi hai cách:
+## Dual Evaluation Methodology
 
-- **(A) Native** — đánh giá trên tập test *không khử trùng lặp*. Đây là con số mà
-  một nhóm sẽ nhận được nếu họ đơn giản bỏ qua bước khử trùng lặp.
-- **(B) Đối chứng** — đánh giá trên **đúng 25.284 dòng `test-final` chính thức** mà
-  mọi thực nghiệm trước đã dùng. Vì tập đánh giá giữ nguyên, khác biệt duy nhất là
-  dữ liệu huấn luyện.
+To avoid false equivalencies, two distinct evaluation paradigms are reported:
 
-Cách (B) mới là cách trả lời được câu hỏi. Cách (A) dùng để cho thấy vì sao bỏ bước
-khử trùng lặp lại nguy hiểm.
+- **(A) Native Evaluation**: Evaluated directly on the non-deduplicated test set. This reflects the metrics reported by practitioners who skip deduplication.
+- **(B) Controlled Benchmark Evaluation**: Evaluated strictly on the identical 25,284 flows of the official `test-final` split. Because the test set is held invariant, any performance delta is causally attributable solely to training set deduplication.
 
-## Cấu trúc
+Evaluation Mode (B) answers the scientific question, while Mode (A) demonstrates the inflation risks of evaluating on duplicate-rich data.
+
+---
+
+## Module Structure
 
 ```
 experiment_nodedup/
-├── README.md
-├── data/cleaned_nodedup/     parquet của các biến thể + file chia test
-├── notebooks/                notebook làm sạch và notebook chạy model
-├── models/                   model đã fit trong thực nghiệm này
-└── reports/                  số liệu JSON/CSV và báo cáo
+├── README.md                 Documentation and reproduction guide
+├── data/cleaned_nodedup/     Parquet partitions and test split index files
+├── notebooks/                Sanitization and model evaluation notebooks
+├── models/                   Model checkpoints fitted during this trial
+└── reports/                  JSON/CSV metrics and technical report
 ```
 
-## Tái chạy
+---
 
-```
-python notebooks/... # xem notebook, chạy tuần tự từ trên xuống
-```
+## Reproduction
 
-Seed cố định 42 ở mọi bước chia dữ liệu và mọi model.
+Execute notebooks sequentially from top to bottom. Random seed is locked at 42 across all data splits and estimators.

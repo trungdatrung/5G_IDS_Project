@@ -91,7 +91,7 @@ def plot_cm(ax, cm, rows, cols, title):
     ax.imshow(rown, cmap='Blues', vmin=0, vmax=1, aspect='auto')
     ax.set_xticks(range(len(cols))); ax.set_xticklabels(cols, rotation=40, ha='right', fontsize=8)
     ax.set_yticks(range(len(rows))); ax.set_yticklabels(rows, fontsize=8)
-    ax.set_xlabel('Dự đoán'); ax.set_ylabel('Thật'); ax.set_title(title, fontsize=9)
+    ax.set_xlabel('Predicted'); ax.set_ylabel('True'); ax.set_title(title, fontsize=9)
     small = len(cols) > 6
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
