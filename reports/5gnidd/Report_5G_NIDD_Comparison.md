@@ -6,7 +6,7 @@
 **Replication Pipeline:**
 - Harmonization: `python -I -X utf8 reports/5gnidd/build_5gnidd_unsw31.py .`
 - Evaluation: `python -I -X utf8 reports/5gnidd/eval_5gnidd.py .`
-- Diagnostics: `python -I -X utf8 reports/5gnidd/chan_doan_tuong_tu.py .`
+- Diagnostics: `python -I -X utf8 reports/5gnidd/diagnose_similarity.py .`
 
 ---
 

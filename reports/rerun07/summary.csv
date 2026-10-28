@@ -1,0 +1,24 @@
+section,metric,value,notes
+1. Reproduction,baseline accuracy test-final,0.8186204714443918,"NB04 recorded 0.818620"
+2. Diagnosis,ROC-AUC drop val -> final,-0.026632,ranking stays nearly intact
+2. Diagnosis,MCC drop val -> final,-0.198415,operating point collapses
+2. Diagnosis,KS Normal / KS Attack,2.639957,shift concentrated in the Normal class
+3. Two factors,split method (balanced acc),0.07271007913251715,
+3. Two factors,deduplication (balanced acc),0.02678901450745952,
+4. Deduplication,"Delta PR-AUC, same evaluation set",-0.0027344524183550156,"experiment_nodedup measured -0.0027"
+5. Algorithm,PR-AUC spread across 6 strong families,0.024174251979923067,"1.8x smaller than the drop"
+5. Algorithm,PR-AUC spread including Logistic,0.21971751820644814,picking the wrong family costs a lot
+6. Selected config,accuracy test-final,0.8951510836892896,RF 39f (NB05) @0.7311
+6. Selected config,balanced acc test-final,0.8954838531163261,
+6. Selected config,recall test-final,0.8967303334412431,
+6. Selected config,FPR test-final,0.10576262720859088,constraint <= 0.1
+7. No test labels,pi-hat EM,0.468356,"true pi = 0.3665"
+7. No test labels,fraction EM corrects,0.215796,78% still missing
+8. The cost,Recall Fuzzers baseline,0.8237150586113616,
+8. The cost,Recall Fuzzers selected config,0.6244364292155095,
+9. Significance test,Delta accuracy (bootstrap),0.07648378421135897,CI95 [+0.0718; +0.0808]
+9. Significance test,Delta PR-AUC (bootstrap),0.0113217075315574,CI95 [+0.0093; +0.0134]
+9. Significance test,Delta recall (bootstrap),-0.05230131259314871,CI95 [-0.0582; -0.0462]
+10. Leaky feature,Delta accuracy (39f - 31f),0.015899,same evaluation set
+11. Breakdown,% from threshold recalibration,0.7922480620155045,
+11. Breakdown,% from features,0.20775193798449554,

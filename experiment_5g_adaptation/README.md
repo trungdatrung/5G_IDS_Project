@@ -11,16 +11,16 @@ experiment_5g_adaptation/
 ├── README.md                     Project guide and execution status
 ├── docs/                         Pre-registered experimental design & specifications
 ├── src/                          Standalone execution scripts:
-│   ├── A1_model_gop.py           Experiment A1: Unified dual-domain merged model
+│   ├── A1_merged_model.py        Experiment A1: Unified dual-domain merged model
 │   ├── A2_few_shot.py            Experiment A2: 5G label complexity & few-shot learning curve
 │   └── A3_loao.py                Experiment A3: Leave-One-Attack-Out for unseen 5G zero-days
 ├── results/
-│   ├── A1_model_gop/             Each trial outputs:
+│   ├── A1_merged_model/          Each trial outputs:
 │   ├── A2_few_shot/                tables/  metrics tables (.csv) & machine-readable summaries (.json)
 │   └── A3_loao/                    figures/ high-resolution evaluation figures (.png)
 │                                   logs/    complete execution runtime logs (.txt)
 ├── models/
-│   └── A1_model_gop/             Selected deliverable model checkpoint (rf_gop_loi18.joblib)
+│   └── A1_merged_model/          Selected deliverable model checkpoint (rf_merged_loi18.joblib)
 └── reports/                      In-depth technical reports mapped to pre-registered hypotheses
 ```
 
@@ -30,7 +30,7 @@ experiment_5g_adaptation/
 
 | Step | Script | Results Directory | Report Document | Status |
 |---|---|---|---|---|
-| **A1 Merged Model** | `src/A1_model_gop.py` | `results/A1_model_gop/` | `reports/Report_A1.md` | Completed |
+| **A1 Merged Model** | `src/A1_merged_model.py` | `results/A1_merged_model/` | `reports/Report_A1.md` | Completed |
 | **A2 Label Complexity** | `src/A2_few_shot.py` | `results/A2_few_shot/` | `reports/Report_A2.md` | Completed |
 | **A3 Leave-One-Attack-Out** | `src/A3_loao.py` | `results/A3_loao/` | `reports/Report_A3.md` | Completed |
 | **A4 Model Packaging** | — | — | — | Planned |
@@ -44,7 +44,7 @@ Execute the following commands from the workspace root:
 
 ```bash
 # Full execution:
-python -I -X utf8 experiment_5g_adaptation/src/A1_model_gop.py .     # ~12 minutes
+python -I -X utf8 experiment_5g_adaptation/src/A1_merged_model.py .  # ~12 minutes
 python -I -X utf8 experiment_5g_adaptation/src/A2_few_shot.py .      # ~50 minutes
 python -I -X utf8 experiment_5g_adaptation/src/A3_loao.py .          # ~20 minutes
 

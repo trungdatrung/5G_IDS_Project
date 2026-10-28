@@ -1,0 +1,342 @@
+================================================================================
+     ANALYSIS OF OVERFITTING AND IMPROVEMENT DIRECTIONS - RANDOM FOREST RUN 1
+                  5G IDS Project - UNSW-NB15 Dataset
+================================================================================
+Date         : 2026-10-01
+Related to   : reports/Report_RandomForest_Run1.txt
+               notebooks/01_Data_Cleaning.ipynb, notebooks/02_Model_Training.ipynb
+
+
+SUMMARY
+--------------------------------------------------------------------------------
+In run 1, accuracy was 100% on the train set but only 81.8% on the test set.
+This 18-point gap is NOT entirely due to overfitting. In reality, two
+phenomena overlap:
+
+  (1) Ordinary overfitting : train 100%  -> validation 92.7%   (~7 points)
+      This level is normal for Random Forest. Parameter tuning only moves
+      validation results within the 90.9-93.2% range.
+  (2) Dataset shift between the train set and the official test set:
+      validation 92.7% -> test 81.5%   (~11 points, the LARGER part)
+      A model can distinguish which rows come from train vs. test with
+      AUC = 0.80 (0.89 for Normal traffic alone).
+
+Therefore, fighting overfitting alone (limiting tree depth, raising
+min_samples_leaf, etc.) will NOT solve the main problem. Improvement needs
+to focus on:
+  - a correct evaluation procedure (with a validation set),
+  - selecting the decision threshold,
+  - handling distribution shift, especially in Normal traffic.
+
+
+================================================================================
+PART 1. RE-AUDITING THE STEPS TAKEN SO FAR
+================================================================================
+
+Step 1 - Data cleaning (notebook 01)
+  - Dropped `id`, shrank data types (df_shrink), checked for NaN (none found).
+    -> Correct, no effect on overfitting.
+  - Dropped 8 leaky features (sttl, dttl, ct_state_ttl, ...) per D'hooge et
+    al. (PST 2022), plus 3 features with no discriminative power.
+    -> Methodologically correct. Consequence: the problem gets HARDER. The
+       TTL features used to separate the two classes almost "perfectly" but
+       do not generalize. After dropping them, the model must rely on
+       timing and traffic features (tcprtt, rate, sload, dbytes...), and
+       this exact feature group is the one that shifts between train and
+       test (see Part 2). The same authors' "Castles Built on Sand" paper
+       also reports an AUROC drop of about 0.1 on UNSW-NB15 after removing
+       leaky features.
+  - Dropped duplicate rows and contradictory rows.
+    -> Correct (prevents inflated scores). Side effect: the class ratio
+       changes differently in the two sets. Train 50.4% Normal / 49.6%
+       Attack, test 63.3% Normal / 36.7% Attack. This is a label
+       (prior) shift, directly affecting Precision.
+  - Not yet done: checking for duplicate rows BETWEEN train and test
+    (cross-set duplicates). This doesn't cause overfitting, but should be
+    checked to ensure the test set is independent.
+
+Step 2 - Preprocessing (notebook 02)
+  - One-hot for proto/service/state, fit only on the train set,
+    handle_unknown='ignore'. -> Correct, no data leakage.
+  - Numeric columns not normalized. -> Correct for Random Forest.
+
+Step 3 - Training (notebook 02)
+  - RandomForest(n_estimators=100, random_state=42), remaining parameters
+    at default: max_depth=None, min_samples_leaf=1, max_features='sqrt'.
+    -> Trees grow until each leaf contains only one class. Measured in
+       practice (model trained on 80% of the train set):
+         average depth 43.8 (max 54), about 5,047 leaves per tree
+         for about 79,000 samples
+       Each tree essentially "memorizes" the data, so train accuracy = 100%
+       is inevitable. This by itself is not a bug: Random Forest is
+       designed to combine many overfit trees into one model with less
+       overfitting (Breiman, 2001).
+
+Step 4 - Evaluation (notebook 02)  <- THE PROCEDURE'S MAIN WEAKNESS
+  - Run 1 has NO validation set. We only compare "train 100%" against
+    "test 82%," so we cannot separate how much is overfitting versus how
+    much is a genuine data difference.
+  - Train-set accuracy is not a meaningful overfitting measure for Random
+    Forest. OOB (out-of-bag) score or validation/cross-validation should be
+    used instead.
+
+
+================================================================================
+PART 2. DIAGNOSTIC RESULTS
+================================================================================
+Note on methodology: measurements A and B use only the train set (split 80%
+for training, 20% for validation, stratified by label, random_state=42).
+Measurement C additionally uses the test set's features but NOT its labels.
+Measurement D touches the test set, for diagnosis only, not used to select
+parameters.
+
+A. Ordinary overfitting: train vs validation vs OOB (same baseline parameters)
+                       Accuracy  Precision  Recall   F1      ROC-AUC
+    Train (80%)         1.0000    1.0000   1.0000  1.0000
+    Validation (20%)    0.9268    0.9055   0.9519  0.9281   0.9841
+    OOB score            0.9229
+  -> On data with the SAME distribution as the train set, the model
+     generalizes well (~92-93%). The train -> validation gap is ~7 points.
+
+B. Trying parameter adjustments (evaluated on validation, test set not used)
+    Parameters                            Train acc  Val acc  Val P   Val R
+    default                                 1.0000    0.9268  0.9055  0.9519
+    min_samples_leaf=5                      0.9495    0.9229  0.8806  0.9771
+    min_samples_leaf=20                     0.9187    0.9158  0.8624  0.9881
+    max_depth=15                            0.9325    0.9217  0.8770  0.9795
+    max_depth=10                            0.9073    0.9085  0.8448  0.9992
+    min_samples_leaf=5, max_features=0.3    0.9765    0.9316  0.9109  0.9557
+  Observations:
+  - Limiting the trees sharply lowers train accuracy (100% -> 91%) but
+    validation accuracy does NOT improve, and even dips slightly. This is a
+    sign that the train -> validation gap is not "harmful" overfitting.
+  - The more limited the trees, the more the model leans toward predicting
+    Attack: Recall rises, Precision falls. This is the OPPOSITE of what we
+    need (our problem is false alarms).
+  - The best configuration on validation (min_samples_leaf=5,
+    max_features=0.3) beats the baseline by only 0.5 points. Simple
+    parameter tuning will only yield small gains.
+
+C. Distribution shift between train and test (adversarial validation)
+  Method: pool the features of both sets, label them "0 = from train,
+  1 = from test," then train a Random Forest to predict each row's origin
+  (3-fold CV). If the two sets share the same distribution, AUC ~ 0.5.
+    All data           AUC = 0.8020
+    Normal traffic only AUC = 0.8894   <- the strongest shift
+    Attack traffic only AUC = 0.7030
+  The features that best distinguish train from test: sinpkt, sload,
+  sbytes, dinpkt, dur, rate, ackdat, dload. This overlaps exactly with the
+  attack-detection model's most important feature group.
+  Concrete example (from the run 1 report):
+    Normal with tcprtt > 0.01 s :  train 19.0%  ->  test 41.3%
+    Normal with rate < 100 pkt/s:  train 33.7%  ->  test 51.6%
+  -> The model learns the rule "slow / low rate => Attack" on the train
+     set. This rule is correct on train data, but the test set has far
+     more "slow" Normal traffic, producing false alarms.
+  Note: Moustafa & Slay (2016) concluded that UNSW-NB15's train/test sets
+  have compatible statistical properties (skewness, kurtosis). Their
+  analysis was done on the original data. After removing duplicates and
+  leaky features, our measurement shows the two sets are fairly clearly
+  distinguishable.
+
+D. Same baseline model: validation vs test
+                     Accuracy  Precision  Recall   F1
+    Validation        0.9268    0.9055   0.9519  0.9281
+    Test              0.8145    0.6765   0.9465  0.7891
+  -> Recall stays almost the same (95%), but Precision falls from 0.91 to
+     0.68. The entire drop comes from the Normal traffic side.
+
+E. Splitting the Precision drop into 2 causes (estimate)
+  - Normal false-alarm rate (FPR): validation ~10%, test 25.7% (about a
+    2.5x increase).
+  - If FPR stayed at ~10% but the class ratio matched the test set's
+    (63% Normal), Precision would be about
+    17,530 / (17,530 + 0.10 x 32,034) ~ 0.85.
+  => From 0.91 down to ~0.85: due to the different Normal/Attack ratio
+     (base rate). From ~0.85 down to 0.68: due to test's Normal traffic
+     having different characteristics (covariate shift). This is the
+     larger cause.
+
+
+================================================================================
+PART 3. EXPLAINING THE "OVERFITTING" PHENOMENON
+================================================================================
+1. Train accuracy = 100% is a characteristic of Random Forest with
+   unlimited-depth trees, not evidence of harmful overfitting. OOB and
+   validation (~92-93%) are the correct estimate on same-distribution data.
+
+2. Most of the gap (validation 92.7% -> test 81.5%) is due to distribution
+   shift between the two sets:
+   a) Covariate shift: test's Normal traffic is slower, has sparser
+      packets, fewer reply bytes. It falls in a region where the train set
+      has almost only Attack examples.
+   b) Prior (class-ratio) shift: train 50/50, test 63/37. At the same
+      false-alarm rate, the test set has more Normal rows, so it has more
+      absolute FPs, leading to lower Precision (Arp et al. call this the
+      "base rate fallacy").
+
+3. Removing leaky features forces the model to rely on the timing/traffic
+   feature group, which is sensitive to network conditions. This is the
+   cost of getting an honest result. The leaky features should not be
+   brought back.
+
+4. Run 1's procedure lacked a validation set, so the entire gap was
+   wrongly attributed to overfitting.
+
+
+================================================================================
+PART 4. FEASIBLE DIRECTIONS FOR IMPROVEMENT (in priority order)
+================================================================================
+[1] FIX THE EVALUATION PROCEDURE (mandatory, do this first)
+  - Split a validation set from the train set (stratified 80/20), or use
+    5-fold StratifiedKFold. Always report the triple: train / validation
+    (or OOB) / test.
+  - Enable oob_score=True to get an estimate at no extra data cost.
+  - The test set is used only ONCE, for the final configuration. Every
+    choice (parameters, threshold, features) is based on validation, to
+    avoid "data snooping" (Arp et al., pitfall P3).
+  - Also report metrics less dependent on the class ratio: ROC-AUC, PR-AUC,
+    balanced accuracy, FPR (pitfalls P7, P8).
+
+[2] TUNE RANDOM FOREST PARAMETERS (small improvement, low cost)
+  Per Probst, Wright & Boulesteix (2019), the parameters most worth tuning
+  are:
+    - max_features (mtry)          : try 0.1 / 'sqrt' / 0.3 / 0.5
+    - min_samples_leaf (node size) : 1 / 2 / 5 / 10
+    - max_samples (per-tree sample size) : 0.5 / 0.7 / 1.0
+    - class_weight : None / 'balanced' / 'balanced_subsample'
+  n_estimators doesn't need tuning: more is more stable, but after a few
+  hundred trees there's almost no further gain (Oshiro et al., 2012;
+  Probst et al., 2019). 300 trees is sufficient.
+  Method: RandomizedSearchCV with 30-50 combinations, 5-fold CV on the
+  train set, scoring='f1' or 'average_precision' (Bergstra & Bengio, 2012:
+  random search is more effective than grid search). Optuna can be used if
+  Bayesian optimization is desired.
+  Expected: validation rises by about 0.5-1 points. Does NOT solve
+  distribution shift.
+
+[3] SELECT THE DECISION THRESHOLD (biggest gain for Precision, very easy)
+  - ROC-AUC on test is still 0.955, meaning the model ranks well but the
+    0.5 threshold isn't suitable.
+  - Use TunedThresholdClassifierCV (scikit-learn >= 1.5). This tool finds
+    the optimal threshold via cross-validation on the train set, according
+    to a metric (F1, balanced accuracy) or a cost function, e.g. "1 missed
+    attack = k false alarms."
+  - When choosing the threshold, account for the deployment environment's
+    Normal/Attack ratio, instead of the default 50/50.
+
+[4] HANDLE DISTRIBUTION SHIFT (main research direction)
+  a) Build a "test-like" validation set: use adversarial validation (only
+     the test set's features, no labels) to pick the train rows most
+     similar to test as validation. Validation then reflects real-world
+     performance more closely. Must be clearly noted in the report, since
+     this is a semi-transductive technique.
+  b) Shift-based weighting (importance weighting for covariate shift,
+     Quinonero-Candela et al., 2009): estimate
+     w(x) ~ P(test|x) / P(train|x) using the same adversarial model, then
+     pass it as sample_weight when fitting. This makes the model pay more
+     attention to train samples resembling test traffic. Also uses test
+     features (not labels), so the same disclosure note applies.
+  c) More robust features: try ratio features (dbytes/sbytes, bytes/packet,
+     dpkts/spkts), since ratios usually depend less on network speed than
+     absolute values do. Try dropping the most-shifted features (sinpkt,
+     sload, dur...) AND compare on validation. Keep the change only if
+     validation doesn't drop.
+  d) Check for duplicate rows between train and test to ensure the test set
+     is independent.
+
+[5] COMPARE AGAINST OTHER MODELS (after the procedure is correct)
+  - HistGradientBoostingClassifier (built into scikit-learn, has early
+    stopping), XGBoost (Chen & Guestrin, 2016), LightGBM (Ke et al., 2017).
+  - Keep the same cleaned feature set, the same validation procedure, and
+    the same test set.
+
+[6] INTERPRETATION AND REPORTING
+  - Add permutation importance, computed on validation. MDI (Gini) is
+    biased toward continuous features and can overrate features the model
+    uses to overfit (Strobl et al., 2007; scikit-learn docs).
+  - Analyze errors by attack type (Fuzzers has the lowest Recall, 81.6%).
+  - When comparing against other papers, state clearly that leaky features
+    and duplicates were removed, so a lower score is expected (D'hooge et
+    al., 2022).
+  - Long-term direction for the 5G topic: cross-dataset evaluation (train
+    on UNSW-NB15, test on a different dataset), since Layeghy & Portmann
+    (2023) show NIDS models often fail to generalize across datasets.
+
+PROPOSED EXPERIMENT PLAN FOR RUN 2
+  Step 1: add validation + OOB to notebook 02, rerun the baseline to get
+          the train / validation / test triple.
+  Step 2: RandomizedSearchCV (item [2]) and select the configuration based
+          on validation.
+  Step 3: TunedThresholdClassifierCV (item [3]).
+  Step 4: evaluate once on test, compare against run 1 (Precision, FPR,
+          F1, PR-AUC).
+  Step 5 (optional): try [4b] importance weighting and [4c] ratio
+          features, reported separately as a distribution-shift
+          experiment.
+
+
+================================================================================
+PART 5. REFERENCES
+================================================================================
+On data and leaky features
+ [1] D'hooge, L., Verkerken, M., Wauters, T., Volckaert, B., De Turck, F. (2022).
+     Discovering non-metadata contaminant features in intrusion detection
+     datasets. 19th Annual Int. Conf. on Privacy, Security & Trust (PST).
+     doi:10.1109/PST55820.2022.9851974  (PDF: References/PST_CR.pdf)
+ [2] D'hooge, L., Verkerken, M., Wauters, T., De Turck, F. (2023). Castles Built
+     on Sand: Observations from Classifying Academic Cybersecurity Datasets
+     with Minimalist Methods.
+     https://imec-publications.be/server/api/core/bitstreams/1a9105bf-094d-4c2e-ac64-123e582a3132/content
+ [3] Moustafa, N., Slay, J. (2016). The evaluation of Network Anomaly Detection
+     Systems: Statistical analysis of the UNSW-NB15 data set and the
+     comparison with the KDD99 data set. Information Security Journal.
+     https://www.semanticscholar.org/paper/2a56ca15bea4f9a911835bfd08a2f4526091d785
+ [4] Engelen, G., Rimmer, V., Joosen, W. (2021). Troubleshooting an Intrusion
+     Detection Dataset: the CICIDS2017 Case Study. IEEE SPW.
+     https://intrusion-detection.distrinet-research.be/WTMC2021/
+
+On evaluation methodology in ML for cybersecurity
+ [5] Arp, D. et al. (2022). Dos and Don'ts of Machine Learning in Computer
+     Security. USENIX Security. https://arxiv.org/pdf/2010.09470
+     (10 common pitfalls: sampling bias, data snooping, base rate fallacy...;
+      website: https://dodo-mlsec.org/)
+ [6] Layeghy, S., Portmann, M. (2023). Explainable cross-domain evaluation of
+     ML-based network intrusion detection systems. Computers & Electrical
+     Engineering 108:108692.  Preprint "On Generalisability of Machine
+     Learning-based Network Intrusion Detection Systems":
+     https://arxiv.org/pdf/2205.04112
+ [7] Quinonero-Candela, J., Sugiyama, M., Schwaighofer, A., Lawrence, N. D.
+     (eds.) (2009). Dataset Shift in Machine Learning. MIT Press.
+     https://mitpress.mit.edu/9780262545877/dataset-shift-in-machine-learning/
+
+On Random Forest and parameter tuning
+ [8] Breiman, L. (2001). Random Forests. Machine Learning 45(1):5-32.
+     doi:10.1023/A:1010933404324
+ [9] Probst, P., Wright, M. N., Boulesteix, A.-L. (2019). Hyperparameters and
+     tuning strategies for random forest. WIREs Data Mining and Knowledge
+     Discovery 9(3):e1301. https://arxiv.org/pdf/1804.03515
+[10] Oshiro, T. M., Perez, P. S., Baranauskas, J. A. (2012). How Many Trees in a
+     Random Forest? MLDM 2012.
+     https://link.springer.com/chapter/10.1007/978-3-642-31537-4_13
+[11] Bergstra, J., Bengio, Y. (2012). Random Search for Hyper-Parameter
+     Optimization. JMLR 13:281-305. https://jmlr.org/papers/v13/bergstra12a.html
+[12] Akiba, T. et al. (2019). Optuna: A Next-generation Hyperparameter
+     Optimization Framework. KDD 2019. https://arxiv.org/pdf/1907.10902
+[13] scikit-learn: Tuning the decision threshold for class prediction
+     (TunedThresholdClassifierCV).
+     https://scikit-learn.org/stable/modules/classification_threshold.html
+[14] Strobl, C., Boulesteix, A.-L., Zeileis, A., Hothorn, T. (2007). Bias in
+     random forest variable importance measures: Illustrations, sources and a
+     solution. BMC Bioinformatics 8:25. doi:10.1186/1471-2105-8-25
+[15] scikit-learn: Permutation Importance vs Random Forest Feature Importance
+     (MDI).
+     https://scikit-learn.org/stable/auto_examples/inspection/plot_permutation_importance.html
+
+On comparison models
+[16] Chen, T., Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System.
+     KDD 2016. https://dl.acm.org/doi/10.1145/2939672.2939785
+[17] Ke, G. et al. (2017). LightGBM: A Highly Efficient Gradient Boosting
+     Decision Tree. NeurIPS 2017.
+     https://proceedings.neurips.cc/paper/2017/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf
+================================================================================

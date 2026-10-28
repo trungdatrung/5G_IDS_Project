@@ -1,0 +1,10 @@
+﻿Actual,Benign,HTTPFlood,ICMPFlood,SYNFlood,SYNScan,SlowrateDoS,TCPConnectScan,UDPFlood,UDPScan
+Benign,22931,13,0,0,0,9,62,0,1
+HTTPFlood,559,60713,0,0,0,3419,0,0,0
+ICMPFlood,0,0,461,0,0,0,1,0,0
+SYNFlood,0,0,0,4929,0,0,0,0,0
+SYNScan,0,0,0,0,499,0,1,0,19
+SlowrateDoS,10,1373,0,0,0,35649,0,0,0
+TCPConnectScan,30,0,1,0,5,0,9979,0,13
+UDPFlood,0,0,0,0,0,0,0,30656,0
+UDPScan,5,0,0,0,2,0,3,0,199

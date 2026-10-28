@@ -1,0 +1,236 @@
+================================================================================
+     EXPERIMENT: CLEANING WITHOUT REMOVING DUPLICATE ROWS — DATA OR ALGORITHM?
+                  5G IDS Project / UNSW-NB15 (binary label)
+================================================================================
+Run date   : 2026-10-02
+Notebook   : experiment_nodedup/notebooks/01_Clean_NoDedup.ipynb
+             experiment_nodedup/notebooks/02_Models_NoDedup.ipynb
+Data       : experiment_nodedup/reports/cleaning_stats.json
+             experiment_nodedup/reports/nodedup_results.csv / .json
+
+ISOLATION (verified by timestamp after the run completed):
+  - READ-ONLY: data/raw/, data/cleaned/ (control evaluation set),
+    models/random_forest_v2_metrics.json (to get run2's exact hyperparameters).
+  - WRITE ONLY into experiment_nodedup/.
+  - The base project's notebooks/, data/cleaned/, models/, reports/ are NOT modified.
+    data/cleaned keeps its original timestamp of 2026-10-01 12:00.
+
+DESIGNED FOR CLEAR ATTRIBUTION OF CAUSE:
+  The algorithm is kept COMPLETELY UNCHANGED - the same Random Forest configuration
+  from run1/run2/run3, the same preprocessing, the same split, the same seed 42, the
+  same metrics. NO hyperparameter re-tuning. The only thing that changes is the
+  training dataset.
+  Changing both at once would make it impossible to tell which side is at fault.
+
+
+================================================================================
+PART 1. CLEANING VARIANTS
+================================================================================
+All variants drop id, downcast dtypes, and drop the 8 contaminated columns + 3
+non-discriminating columns - identical to notebook 01. They differ only in the
+row-removal step.
+
+  Variant               Remove dupes   Remove conflicts   train      test
+  --------------------- -------------- ------------------ ---------- ---------
+  V1_nodedup            NO             yes                170,515    80,816
+  V2_nodedup_nocontra   NO             NO                 175,341    82,332
+  V0_official_recipe    yes            yes                 98,934    50,567
+
+  V1 is the main variant (matches the "do not remove duplicate rows" requirement).
+  V2 also keeps the conflicting rows. V0 is the control.
+
+  CONTROL CHECK PASSED: V0 reproduces data/cleaned EXACTLY, value for value
+  (98,934 x 33 and 50,567 x 33). If this assertion failed, every comparison below
+  would be meaningless. It passes, so the cleaning function here is a faithful copy.
+
+  Scale of the deduplication step: it removes 75,775/175,341 = 43.2% of train rows
+  and 31,523/82,332 = 38.3% of test rows. This is why the cleaned set shrinks so much.
+
+
+================================================================================
+PART 2. FINDING 1 - THE CLEANING STEP DOES NOT CREATE THE CLASS-RATIO SKEW
+================================================================================
+The earlier report (Bao_cao_so_sanh_3_lan_chay.txt section 3.2 cause 4, and slide 2)
+claims: "The cleaning step affects the two sets DIFFERENTLY, creating a 13-point skew."
+
+DIRECT MEASUREMENT:
+
+                       train     test     skew
+    Raw data          0.6806   0.5506   0.1300
+    After cleaning    0.4964   0.3665   0.1299
+
+    Drop in train : 0.1842 points
+    Drop in test  : 0.1841 points
+
+  => The cleaning step pulls BOTH sets down by almost EXACTLY THE SAME amount
+     (0.0001-point difference). The 13-point skew was ALREADY PRESENT in the raw
+     UNSW-NB15 data.
+
+  CONCLUSION: the claim "the cleaning step itself creates a 13-point class-ratio
+  skew" is WRONG and should be corrected in both the earlier report and the slide.
+  The cleaning step lowers the Attack ratio of both sets, but does NOT create and
+  does NOT widen the skew.
+
+  Consequence for the Precision decomposition: the "due to class ratio" component
+  (0.0540, ~23%) is still numerically correct - the class ratios of the two sets
+  really are different. Only the part attributing this to the cleaning step is
+  wrong; the skew is a property of the raw dataset.
+
+
+================================================================================
+PART 3. FINDING 2 - KEEPING DUPLICATE ROWS LEAKS TEST ROWS INTO TRAIN
+================================================================================
+Number of test rows that exactly duplicate (features + label) a train row:
+
+    V0_official_recipe     1,993 /  50,567   =  3.94%
+    V1_nodedup            20,960 /  80,816   = 25.94%
+    V2_nodedup_nocontra   23,536 /  82,332   = 28.59%
+
+  => Dropping the deduplication step raises the leakage rate by 6.6x. More than a
+     quarter of the test set is sitting verbatim inside the train set. Every metric
+     measured on that test set is inflated by rote memorization.
+
+
+================================================================================
+PART 4. TWO EVALUATION METHODS - MUST BE CLEARLY DISTINGUISHED
+================================================================================
+  (A) NATIVE  - measured on the non-deduplicated test set (40,408 rows).
+                This is the figure a team would get if they skipped this step.
+  (B) CONTROL - measured on the EXACT 25,284-row official test-final set that
+                every earlier experiment used. The evaluation set stays fixed,
+                so the only difference is the training data. ONLY METHOD (B)
+                ANSWERS THE QUESTION.
+
+Sizes: non-deduplicated  136,412 fit / 34,103 val / 40,408 dev / 40,408 final
+       official           79,147 fit / 19,787 val / 25,283 dev / 25,284 final
+
+IS COMPARISON (B) FAIR?
+    Share of the OFFICIAL test-final rows present in the training set:
+        official train-fit              3.22%
+        non-deduplicated train-fit      3.67%
+    Nearly identical. Reason: deduplication does not remove any feature vector, it
+    only removes duplicate copies. The two train sets contain the same set of
+    DISTINCT rows, differing only in how many times each repeats. So the gap seen
+    in (B) is NOT caused by leakage, but by repeat counts acting as an IMPLICIT
+    SAMPLE WEIGHT.
+
+
+================================================================================
+PART 5. RESULTS
+================================================================================
+
+5.1 Method (B) - control, same official 25,284-row test-final set
+--------------------------------------------------------------------------------
+  Stage       train = official     train = non-deduplicated      PR-AUC diff
+  ----------- -------------------- ----------------------------- -------------
+  M1 (run1)   PR-AUC 0.9265        PR-AUC 0.9240                 -0.0024
+  M2 (run2)   PR-AUC 0.9414        PR-AUC 0.9387                 -0.0027
+  M3 (run3)   PR-AUC 0.9418        PR-AUC 0.9395                 -0.0023
+
+  M2 detail (main configuration), threshold 0.50:
+                            Acc.    Prec.   Recall    F1     FPR
+    train = official        0.8186  0.6813  0.9491  0.7932  0.2569
+    train = non-dedup       0.8179  0.6800  0.9503  0.7927  0.2587
+
+  M3 detail (calibrated + threshold FPR<=0.10 chosen on the matching test-dev):
+                            Threshold  Acc.    Prec.   Recall    F1     FPR
+    train = official        0.7105     0.8824  0.8265  0.8597  0.8428  0.1045
+    train = non-dedup       0.7636     0.8827  0.8346  0.8481  0.8413  0.0973
+
+  SIGNIFICANCE TEST (paired bootstrap, 1,000 resamples, diff = non-dedup - official):
+    M1: delta PR-AUC -0.00243  95% CI [-0.00454; -0.00033]  p = 0.026  SIGNIFICANT
+    M2: delta PR-AUC -0.00271  95% CI [-0.00374; -0.00167]  p = 0.000  SIGNIFICANT
+
+  => Training on the NON-deduplicated data yields a statistically significant
+     WORSE result, though the margin is tiny (~0.0025 PR-AUC). It provides NO
+     improvement whatsoever.
+
+5.2 Method (A) - native, on the non-deduplicated test set
+--------------------------------------------------------------------------------
+  Stage       PR-AUC   Accuracy   Precision  Recall    FPR
+  ----------- -------- ---------- ---------- -------- -------
+  M1 (run1)   0.9789   0.8691     0.8216     0.9766   0.2656
+  M2 (run2)   0.9846   0.8702     0.8229     0.9769   0.2633
+  M3 (run3)   0.9851   0.9162     0.9189     0.9315   0.1029
+
+  Compared with method (B): PR-AUC is 0.045-0.046 higher, M3's Accuracy is 0.034
+  higher. It looks like a big jump.
+
+  BUT THIS IS AN ILLUSORY NUMBER. 25.94% of this test set's rows are exact copies
+  of train rows. The model does not need to generalize, it only needs to
+  memorize. If a team reports PR-AUC 0.985 using this method, that is data
+  snooping via duplication (Arp et al., pitfall P1 - sampling bias / P3 - data
+  snooping).
+
+
+================================================================================
+PART 6. ANSWERING THE QUESTION: DATA OR ALGORITHM?
+================================================================================
+
+NOT THE TRAINING ALGORITHM.
+  The algorithm is kept completely unchanged on both branches. When measured on
+  the same honest evaluation set, the three model stages give almost identical
+  results (~0.0025 PR-AUC difference). Doubling the training data (79,147 ->
+  136,412 rows) does not help either - because the added rows carry no new
+  information, they are just duplicates.
+
+  This is consistent with the earlier boosting experiment: HistGradientBoosting,
+  a completely different algorithm family, also landed at the same PR-AUC level
+  (+0.0003, not significant). Two independent pieces of evidence point the same
+  way.
+
+NOT THE DEDUPLICATION STEP EITHER.
+  The hypothesis that "overly aggressive cleaning damaged the data" DOES NOT HOLD UP:
+    - Deduplication removes no feature vector, only duplicate copies.
+    - It does not create the class-ratio skew (Part 2).
+    - Keeping duplicate rows makes results WORSE, not better (Part 5.1).
+  The deduplication step is CORRECT and should be kept.
+
+THE ISSUE LIES IN THE DATA'S DISTRIBUTION, NOT IN HOW IT WAS CLEANED.
+  The root cause was already measured in the earlier round of experiments and is
+  not overturned by this one:
+    - ackdat is the most skewed feature among the 28 numeric features (KS 0.0984;
+      0.2698 for Normal alone) AND AT THE SAME TIME the model's most important
+      feature (permutation importance 0.0501).
+    - P(Attack | slow TCP handshake) shifts from 0.80 (train) to 0.51 (test) -
+      a concept shift, not a covariate shift.
+    - Adversarial validation AUC 0.8012 (0.8722 for Normal alone).
+    - The 13-point class-ratio skew - now known to be already present in the raw
+      data.
+
+  No cleaning approach can fix any of this, because these are properties of the
+  UNSW-NB15 dataset itself.
+
+
+================================================================================
+PART 7. WHAT CANNOT BE CONCLUDED FROM THIS EXPERIMENT
+================================================================================
+  - It cannot be concluded that every other cleaning approach is useless. Only one
+    change was tested here: toggling the removal of duplicate rows (and
+    conflicting rows).
+  - It cannot be concluded that adding data in general never helps. The data added
+    here is DUPLICATE data, carrying no new information. Genuinely new data - e.g.
+    labels drawn from the test distribution - remains an untried direction.
+  - Variant V2 (also keeping the conflicting rows) was created and saved but has
+    NOT yet been run through the model; it differs from V1 by only 4,826 train
+    rows, so it is unlikely to give a different result.
+
+
+================================================================================
+PART 8. CORRECTIONS TO THE EARLIER DOCUMENT
+================================================================================
+  Two places need correcting in reports/Bao_cao_so_sanh_3_lan_chay.txt and the slide:
+
+  1. Section 3.2 "CAUSE 4 - Class ratio created by the cleaning step itself" and
+     slide 2 "The cleaning step itself creates a 13-point class-ratio skew".
+     CORRECTED TO: the 13-point skew is already present in the raw data (0.6806 vs.
+     0.5506); the cleaning step lowers both sets' baseline by almost the same
+     amount (-0.1842 and -0.1841) and preserves the gap.
+
+  2. The conclusion section: "The real bottleneck is not the model but the DATA:
+     ... plus a 13-point class-ratio skew created by the cleaning step itself".
+     CORRECTED TO: ... plus a 13-point class-ratio skew that is inherent to the
+     raw dataset.
+
+  The rest of the earlier report is unaffected.
+================================================================================

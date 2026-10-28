@@ -1,0 +1,8 @@
+﻿experiment,n,accuracy,balanced_acc,mcc,macro_precision,macro_recall,macro_f1,weighted_f1
+E1 multiclass RF · 5G test-final,56934,0.9947,0.99,0.993,0.9916,0.99,0.9908,0.9947
+E2 multiclass RF without ct_* · 5G test-final,56934,0.9847,0.958,0.98,0.9659,0.958,0.9605,0.9849
+E3 multiclass RF · BS1->BS2|31f,171542,0.9678,0.9782,0.9578,0.9666,0.9782,0.972,0.9679
+E3 multiclass RF · BS1->BS2|no_ct,171542,0.9851,0.9821,0.9804,0.9446,0.9821,0.9593,0.9852
+E3 multiclass RF · BS2->BS1|31f,208014,0.986,0.9577,0.9816,0.9102,0.9577,0.9091,0.9872
+E3 multiclass RF · BS2->BS1|no_ct,208014,0.9738,0.9035,0.9657,0.8825,0.9035,0.8617,0.9753
+E4 multiclass RF · UNSW→UNSW (NB07 baseline),25284,0.7628,0.5316,0.6217,0.5776,0.5316,0.5242,0.7818

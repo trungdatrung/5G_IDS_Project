@@ -1,4 +1,4 @@
-# Python 3.11 — phiên bản đã dùng để chạy các kết quả trong repo
+# Python 3.11 — version used to produce the results in this repo
 numpy==2.4.6
 pandas==3.0.6
 scikit-learn==1.9.1
@@ -7,6 +7,6 @@ pyarrow==25.0.1
 joblib==1.6.0
 matplotlib==3.11.2
 seaborn==0.13.2
-# chỉ cần cho notebooks/01_Data_Cleaning.ipynb và Clean_Data.ipynb (hàm df_shrink)
+# only needed for notebooks/01_Data_Cleaning.ipynb and Clean_Data.ipynb (df_shrink function)
 fastai==2.8.12
 jupyter

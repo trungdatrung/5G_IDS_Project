@@ -1,0 +1,320 @@
+================================================================================
+        EXPERIMENT REPORT - RUN 2 - RANDOM FOREST (TUNED + THRESHOLD SELECTED)
+                 AND COMPARISON WITH RUN 1 - 5G IDS Project / UNSW-NB15
+================================================================================
+Run date         : 2026-10-01
+Notebook         : notebooks/03_Model_Training_v2.ipynb
+                   (run 1 preserved unchanged in notebooks/02_Model_Training.ipynb)
+Saved model      : models/random_forest_v2.joblib
+                   (includes the encoder + Random Forest + decision threshold)
+Source data      : models/random_forest_v2_metrics.json
+                   models/random_forest_v2_importance.csv
+Original plan    : reports/Analysis_Overfit_and_Improvement_Direction.txt
+
+
+SUMMARY
+--------------------------------------------------------------------------------
+On the test set, run 2 beats run 1 on every metric except a slight 0.2-point
+drop in Recall:
+    Accuracy  0.8176 -> 0.8276  (+1.0 point)
+    Precision 0.6807 -> 0.6951  (+1.4 points)
+    F1        0.7917 -> 0.8005  (+0.9 points)
+    FPR       25.7%  -> 23.9%   (551 fewer false alarms)
+    PR-AUC    0.9287 -> 0.9428  (+1.4 points)
+Overfitting decreased: the train-fit -> validation gap drops from 7.3 to
+4.5 points.
+
+The improvement on test is SMALL. This matches the prediction in the analysis
+report: tuning parameters and selecting the threshold does not resolve the
+distribution shift between train and test. The validation -> test gap is
+still about 10 points. The experiments addressing distribution shift
+(step 5) also show no improvement, and the cause is explained in Part 6.
+
+
+================================================================================
+PART 1. EXPERIMENTAL DESIGN
+================================================================================
+Data, features, and preprocessing are UNCHANGED from run 1:
+  - Train 98,934 rows, test 50,567 rows, 31 features (183 columns after
+    one-hot).
+  - One-hot for proto/service/state, fit only on train.
+
+                   RUN 1                           RUN 2
+Validation        None                            20% of train split off
+                                                 (stratified), OOB score enabled
+Parameters        Default                         RandomizedSearchCV
+                  (100 trees, unlimited depth)    30 combinations x 5-fold CV,
+                                                 selected by PR-AUC
+Threshold         Fixed at 0.5                    TunedThresholdClassifierCV
+                                                 (5-fold CV, optimizing F1)
+Number of trees   100                             300
+Test set usage    1 time                          1 time for the main model
+                                                 (step 4). Step 5 uses it
+                                                 additionally for reference,
+                                                 NOT used to select the model.
+
+Run 2 procedure:
+  Step 1: run 1's baseline with validation + OOB (to establish an in-train
+          reference point)
+  Step 2: search for parameters via CV on 80% of train
+  Step 3: select the threshold via CV on 80% of train, check on validation
+  Step 4: refit on 100% of train (step 2's parameters, threshold selected
+          via CV), evaluate on test ONCE
+  Step 5: supplementary experiments on distribution shift (5a, 5b, 5c)
+
+
+================================================================================
+PART 2. PARAMETER SEARCH RESULTS (STEP 2) AND THRESHOLD SELECTION (STEP 3)
+================================================================================
+Search space (following Probst et al., 2019):
+  max_features     : 'sqrt', 0.1, 0.2, 0.3, 0.5
+  min_samples_leaf : 1, 2, 3, 5, 10
+  max_samples      : None, 0.5, 0.7
+  class_weight     : None, 'balanced', 'balanced_subsample'
+  max_depth        : None, 20, 30
+
+Best parameters found (CV PR-AUC = 0.9829):
+  max_features = 0.5    (run 1: 'sqrt', about 0.074)
+  max_samples  = 0.7    (run 1: None, i.e. 100%)
+  max_depth    = 20     (run 1: unlimited)
+  min_samples_leaf = 1, class_weight = None (same as run 1)
+
+Observations:
+  - The top 10 combinations differ by only 0.0007 PR-AUC (0.9822-0.9829),
+    smaller than the standard deviation across folds (about 0.0015). The
+    parameter "surface" is very flat: picking any combination from the top
+    group gives roughly equivalent results. This matches Probst et al.'s
+    finding that Random Forest is fairly robust to its default parameters.
+  - class_weight doesn't help, since the train set is already nearly
+    balanced (50/50).
+
+Decision threshold:
+  - Selected via CV on 80% of train: 0.505
+  - Selected via CV on 100% of train (final model): 0.515
+  -> The optimal threshold is nearly equal to 0.5. Reason: CV is performed on
+     data with the same distribution as train (50/50, the model's
+     probabilities are fairly well-calibrated), so the default threshold was
+     already close to optimal. Selecting the threshold "cleanly" (without
+     using the test set) barely changes the result.
+
+
+================================================================================
+PART 3. OVERFITTING: TRAIN - VALIDATION - OOB (test set not used)
+================================================================================
+                          Acc      Prec     Recall   F1       FPR     ROC-AUC
+  Baseline (run 1):
+    train-fit (80%)      1.0000   1.0000   1.0000   1.0000   0.0%    1.0000
+    validation (20%)     0.9268   0.9055   0.9519   0.9281   9.79%   0.9841
+    OOB                  0.9229
+  Tuned (run 2):
+    train-fit (80%)      0.9775   0.9662   0.9893   0.9776   3.41%   0.9985
+    validation, threshold 0.5     0.9322   0.9104   0.9577   0.9335   9.29%   0.9860
+    validation, threshold from CV  0.9324   0.9123   0.9557   0.9335   9.05%   0.9860
+    OOB                  0.9280
+
+  train-fit -> validation gap:   7.3 points (run 1) -> 4.5 points (run 2)
+  Validation accuracy:           0.9268 -> 0.9324 (+0.56 points)
+  OOB accuracy:                  0.9229 -> 0.9280 (+0.51 points)
+
+Conclusion: "ordinary" overfitting has decreased (max_depth=20 and
+max_samples=0.7 make each tree memorize less). Performance on
+same-distribution data improves slightly but consistently on both
+validation and OOB.
+
+
+================================================================================
+PART 4. TEST-SET COMPARISON: RUN 1 vs RUN 2
+================================================================================
+4.1. Metrics
+                          Run 1        Run 2        Change
+  Accuracy               0.8176       0.8276       +0.0100
+  Precision              0.6807       0.6951       +0.0144
+  Recall                 0.9459       0.9436       -0.0023
+  F1-score               0.7917       0.8005       +0.0088
+  FPR (false alarms)     25.67%       23.95%       -1.72 points
+  Balanced accuracy      0.8446       0.8520       +0.0074
+  ROC-AUC                0.9554       0.9603       +0.0049
+  PR-AUC                 0.9287       0.9428       +0.0140
+  Decision threshold     0.5          0.515
+
+4.2. Confusion matrix
+                               RUN 1                    RUN 2
+                        Predicted  Predicted     Predicted  Predicted
+                        Normal     Attack        Normal     Attack
+  Actual Normal       TN 23,812  FP  8,222     TN 24,363  FP  7,671
+  Actual Attack       FN  1,003  TP 17,530     FN  1,046  TP 17,487
+
+  Change: TN +551 | FP -551 (-6.7%) | FN +43 | TP -43
+  Total errors: 9,225 -> 8,717 (-508 errors, -5.5%)
+
+4.3. Interpretation
+  - Run 2 cuts 551 false alarms, in exchange for 43 more missed attacks. The
+    trade-off is roughly 13 fewer FP per extra FN — a clear net benefit.
+  - Precision rises: out of 100 alerts, about 69.5 are correct (run 1:
+    about 68).
+  - Both ROC-AUC and PR-AUC rise, meaning run 2's model genuinely ranks risk
+    better, not just from a threshold shift.
+  - Recall drops by 0.2 points, due to a slightly higher threshold (0.515)
+    and shallower trees. This drop is negligible.
+
+4.4. Recall by attack type (test)
+                     Sample count  Run 1    Run 2
+  Exploits            7,559       0.9836   0.9821
+  Fuzzers             4,436       0.8158   0.8102
+  Reconnaissance      2,262       0.9929   0.9929
+  DoS                 1,677       0.9893   0.9863
+  Generic             1,430       0.9930   0.9937
+  Analysis              427       1.0000   1.0000
+  Shellcode             370       0.9514   0.9459
+  Backdoor              328       1.0000   0.9970
+  Worms                  44       1.0000   1.0000
+  -> Almost unchanged. Fuzzers remains the weak point (~81%) and needs
+     dedicated handling (Part 7).
+
+
+================================================================================
+PART 5. FEATURE IMPORTANCE: PERMUTATION (NEW) vs MDI (AS IN RUN 1)
+================================================================================
+Permutation importance: the tuned model (step 2), measured on validation,
+scoring by PR-AUC, 5 repeats. The figure is how much PR-AUC drops when that
+feature is randomly shuffled.
+
+  Rank  Feature   Permutation (±std)    MDI       MDI rank
+   1    ackdat    0.0501 (±0.0007)     0.1694      2
+   2    sbytes    0.0257 (±0.0004)     0.0366      8
+   3    dload     0.0202 (±0.0004)     0.2446      1
+   4    dbytes    0.0125 (±0.0006)     0.0787      4
+   5    smean     0.0114 (±0.0003)     0.0324      9
+   6    service   0.0110 (±0.0007)     0.0141     15
+   7    synack    0.0083 (±0.0003)     0.0530      5
+   8    tcprtt    0.0072 (±0.0004)     0.0813      3
+   9    dmean     0.0063 (±0.0001)     0.0400      7
+  10    dloss     0.0056 (±0.0004)     0.0147     14
+
+Observations:
+  - Both methods confirm the "TCP handshake timing + reply traffic" group as
+    the core (ackdat, dload, dbytes, synack, tcprtt).
+  - MDI overrates dload (0.245). Permutation shows sbytes, smean, and
+    service matter more than MDI suggests. This matches the warnings from
+    Strobl et al. (2007) and the scikit-learn docs: MDI is biased toward
+    continuous and correlated features.
+  - tcprtt drops from rank 3 (MDI) to rank 8 (permutation), because
+    tcprtt = synack + ackdat. When tcprtt is shuffled, the model can still
+    recover the information from ackdat/synack.
+  - Note: run 2's model uses max_features=0.5, so MDI attribution differs
+    from run 1 (dload rises to rank 1). The MDI tables between the two runs
+    should not be directly compared.
+
+
+================================================================================
+PART 6. SUPPLEMENTARY EXPERIMENTS ON DISTRIBUTION SHIFT (STEP 5) - REFERENCE ONLY
+================================================================================
+These experiments use only the test set's FEATURES (not labels) to measure
+the shift, and look at the result directly on test. They are not used to
+select the main model.
+
+Train/test shift (adversarial AUC): 0.8040, matching the earlier diagnostic
+run (0.8020).
+
+                                    Acc     Prec    Recall  F1      FPR     PR-AUC
+  Run 1 (baseline)                 0.8176  0.6807  0.9459  0.7917  25.67%  0.9287
+  Run 2 - main (step 4)            0.8276  0.6951  0.9436  0.8005  23.95%  0.9428
+  5a: threshold chosen on a
+      "test-like" validation
+      (threshold 0.461)            0.7928  0.6454  0.9648  0.7734  30.67%  0.9376
+  5b: 5a + importance weighting
+      (threshold 0.428)            0.7916  0.6441  0.9644  0.7723  30.84%  0.9369
+  5c: step 4 + 4 ratio features
+      (threshold 0.485)            0.8221  0.6852  0.9519  0.7968  25.30%  0.9441
+
+Results:
+  - 5a and 5b are both WORSE than run 2: Recall rises to 96.5% but FPR rises
+    to about 31%.
+  - 5c has the highest PR-AUC and ROC-AUC (0.9613), the fewest misses
+    (FN = 892, 154 fewer than run 2), but a higher FPR, so F1 is slightly
+    lower than run 2's.
+
+Explanation: why distribution-shift techniques don't help here
+  - The train rows "most similar to test" are 56% Attack (Normal is only
+    44%). The region of feature space where test's Normal traffic falls
+    (slow handshake, low rate, few reply bytes) is mostly occupied by
+    attacks in the train set.
+  - Importance weighting only works when the shift is "pure covariate
+    shift": the feature distribution changes but the feature -> label
+    relationship stays the same, and the train set has enough examples in
+    that region. Here, the train set has almost no examples of "slow
+    Normal." Upweighting that region effectively upweights Attack samples,
+    making the model lean further toward predicting Attack (FPR rises).
+  - Selecting the threshold on a "test-like" validation set is biased for
+    the same reason, so the threshold drops to 0.46 and FPR rises.
+  => This is not something that can be "fixed" with an algorithm on the same
+     train data. The model needs more diverse Normal traffic EXAMPLES
+     (see Part 7).
+  - The ratio features (5c) help the model rank better (higher AUC), a
+    promising direction if combined with better data.
+
+
+================================================================================
+PART 7. ADDITIONAL CHECKS AND LIMITATIONS
+================================================================================
+  - Overlap between train and test: 1,993 test rows (3.94%) exactly match
+    (both features and label) a train row, comprising 1,653 Attack and
+    340 Normal. These rows make the test result slightly optimistic,
+    equally for both runs. We keep them as-is since this is the dataset
+    authors' official test set. The final report could additionally report
+    results on a test set with these duplicates removed.
+  - The validation -> test gap is still about 10 points (0.9324 -> 0.8276).
+    FPR rises from 9.05% (validation) to 23.95% (test). This is the current
+    model's main limitation.
+  - Each configuration was run with only one random_state (42). Differences
+    under about 0.3 points (e.g. Recall by attack type) may fall within
+    random fluctuation.
+  - Table 4.4 in notebook 03 displayed an extra "Normal" row (n = 0, NaN)
+    because the attack_cat column has a category dtype. The code has been
+    fixed (filtering n > 0) and the JSON file has been cleaned. The
+    notebook's output will be correct on the next run.
+
+
+================================================================================
+PART 8. CONCLUSION AND SUGGESTIONS FOR RUN 3
+================================================================================
+Conclusion
+  + The evaluation procedure is now correct: validation/OOB exist, every
+    choice is based on train data, test is used only once for the main
+    model.
+  + Overfitting decreased (gap 7.3 -> 4.5 points). Run 2's model is
+    slightly but consistently better than run 1: F1 +0.9, Precision +1.4,
+    PR-AUC +1.4 points, 551 fewer false alarms.
+  - Parameter tuning and threshold selection have nearly exhausted their
+    room for improvement on the current data. The remaining bottleneck is
+    the distribution shift of Normal traffic between train and test, and it
+    cannot be fixed with weighting or thresholds.
+
+Suggestions for run 3 (in priority order)
+  1. Add more diverse Normal data. The data/raw folder already has the 4
+     full UNSW-NB15_1..4.csv files (about 2.5 million records), from which
+     the official train/test set was extracted. More Normal traffic could be
+     drawn from these files for training, provided:
+       - every record matching the test set is removed (to avoid data
+         leakage),
+       - notebook 01's exact cleaning pipeline is applied (same features,
+         same leaky columns dropped).
+     Note that the full files have a different schema (column names, plus
+     extra IP/port columns that are metadata and must be dropped).
+  2. Try boosting models: HistGradientBoostingClassifier (built into
+     scikit-learn), XGBoost, LightGBM, together with 5c's ratio features.
+     Use the same validation procedure for a fair comparison.
+  3. Select the threshold by operating cost, not just F1. For example, agree
+     with the team on "1 missed attack = k false alarms," then use
+     TunedThresholdClassifierCV with that cost function.
+  4. Analyze Fuzzers separately (Recall about 81%) and the falsely flagged
+     Normal flows (state FIN/INT, service http/ftp) to find additional
+     discriminative features.
+  5. Report results across multiple random_state values (e.g. 5 seeds) to
+     get a confidence interval.
+
+References: see Part 5 of reports/Analysis_Overfit_and_Improvement_Direction.txt
+(Probst et al. 2019; Bergstra & Bengio 2012; scikit-learn
+TunedThresholdClassifierCV; Strobl et al. 2007; Quinonero-Candela et al. 2009;
+Arp et al. 2022; ...).
+================================================================================

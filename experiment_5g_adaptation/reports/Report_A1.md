@@ -2,11 +2,11 @@
 
 **Execution Date:** October 27, 2026 · **Configuration:** FULL (300 estimators, random seed 42) · **Runtime:** ~12 minutes  
 **Experimental Specification:** [`docs/Plan_A_5G_Supervised_Adaptation.md`](../docs/Plan_A_5G_Supervised_Adaptation.md) §2  
-**Execution Script:** `src/A1_model_gop.py`  
+**Execution Script:** `src/A1_merged_model.py`  
 **Underlying Data Artifacts:**
-- Tables: `results/A1_model_gop/tables/` (`A1_tong_hop.csv`, `A1_recall_theo_loai.csv`, `A1_importance.csv`, `A1_ket_qua.json`, `A1-4_cm_da_lop_*.csv`)
-- Figures: `results/A1_model_gop/figures/` (9 confusion matrix plots)
-- Execution Log: `results/A1_model_gop/logs/A1_log.txt`
+- Tables: `results/A1_merged_model/tables/` (`A1_summary.csv`, `A1_recall_by_class.csv`, `A1_importance.csv`, `A1_results.json`, `A1-4_cm_multiclass_*.csv`)
+- Figures: `results/A1_merged_model/figures/` (9 confusion matrix plots)
+- Execution Log: `results/A1_merged_model/logs/A1_log.txt`
 
 ---
 
@@ -16,7 +16,7 @@
 |---|---|
 | **Can a single model succeed on both UNSW and 5G domains?** | **YES.** The unified model **A1-2** (LOI18 feature schema, merged training, equal weighting) successfully met **all** pre-registered targets: **5G BS2 ROC-AUC 0.9976 · FPR 0.0789 · Recall 0.9995**. Enterprise UNSW-NB15 ROC-AUC reached **0.9554**, dropping by only 0.0015 compared to the pure UNSW model. |
 | **Stopping Rule Trigger** | Not triggered. Both A1-2 and A1-3 achieved BS2 ROC-AUC $\ge 0.99$ and UNSW drop $\le 0.01$. |
-| **Deliverable Checkpoint** | **A1-2**, serialized at `models/A1_model_gop/rf_gop_loi18.joblib`. The domain-balanced variant A1-3 gained only 0.0031 in combined balanced accuracy (below the 0.005 threshold required to justify extra complexity). |
+| **Deliverable Checkpoint** | **A1-2**, serialized at `models/A1_merged_model/rf_merged_loi18.joblib`. The domain-balanced variant A1-3 gained only 0.0031 in combined balanced accuracy (below the 0.005 threshold required to justify extra complexity). |
 | **Reusing Baseline NB07** | A1-5 (incremental `warm_start` trees on 5G) yielded the lowest 5G FPR (0.0259), but suffered a 0.012 drop in UNSW ROC-AUC. A1-6 (routing switch) preserved NB07, but exhibited degenerate threshold instability on 5G (FPR 0.1437). |
 
 ---

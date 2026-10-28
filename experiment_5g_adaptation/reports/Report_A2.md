@@ -4,8 +4,8 @@
 **Experimental Specification:** [`docs/Plan_A_5G_Supervised_Adaptation.md`](../docs/Plan_A_5G_Supervised_Adaptation.md) §3  
 **Execution Script:** `src/A2_few_shot.py`  
 **Underlying Data Artifacts:**
-- Tables: `results/A2_few_shot/tables/` (`A2_tung_lan.csv`, `A2_tong_hop.csv`, `A2_ket_qua.json`)
-- Figures: `results/A2_few_shot/figures/A2_duong_cong.png`
+- Tables: `results/A2_few_shot/tables/` (`A2_per_run.csv`, `A2_summary.csv`, `A2_results.json`)
+- Figures: `results/A2_few_shot/figures/A2_learning_curve.png`
 - Execution Log: `results/A2_few_shot/logs/A2_log.txt`
 
 ---

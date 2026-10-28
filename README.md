@@ -42,11 +42,11 @@ The repository contains **source code, evaluation pipelines, comprehensive techn
 │   └── 5gnidd/                        5G-NIDD zero-shot transfer audit and cross-validation plans
 ├── experiment_nodedup/                Controlled ablation without deduplication
 ├── experiment_5gnidd/                 5G-NIDD data sanitization, in-domain baselines, and cross-val
-│   ├── src/                           01_lam_sach → 02_train_danh_gia → 03_phuong_an_cross_validate
+│   ├── src/                           01_clean_5gnidd.py → 02_train_evaluate.py → 03_scenario_cross_validate.py
 │   └── results/                       Evaluation logs, tables, and confusion matrix figures
 ├── experiment_5g_adaptation/          Plan A: Supervised 5G domain adaptation
 │   ├── docs/                          Formal mathematical and experimental specification
-│   ├── src/                           A1_model_gop.py, A2_few_shot.py, A3_loao.py
+│   ├── src/                           A1_merged_model.py, A2_few_shot.py, A3_loao.py
 │   ├── models/                        Exported unified dual-domain model artifacts
 │   ├── results/                       Metrics tables (.csv), logs, and figures
 │   └── reports/                       Detailed experimental reports for A1, A2, and A3
@@ -123,24 +123,23 @@ jupyter nbconvert --to notebook --execute notebooks/07_Consolidated_Rerun.ipynb
 
 ### Step 2: 5G-NIDD Sanitization & In-Domain Baseline
 ```bash
-python -I -X utf8 experiment_5gnidd/src/01_lam_sach_5gnidd.py .
-python -I -X utf8 experiment_5gnidd/src/02_train_danh_gia.py .
-python -I -X utf8 experiment_5gnidd/src/03_phuong_an_cross_validate.py .
+python -I -X utf8 experiment_5gnidd/src/01_clean_5gnidd.py .
+python -I -X utf8 experiment_5gnidd/src/02_train_evaluate.py .
+python -I -X utf8 experiment_5gnidd/src/03_scenario_cross_validate.py .
 ```
 
 ### Step 3: Plan A — Supervised 5G Domain Adaptation
 ```bash
-python -I -X utf8 experiment_5g_adaptation/src/A1_model_gop.py .     # ~12 mins (Trains 7 variants)
+python -I -X utf8 experiment_5g_adaptation/src/A1_merged_model.py .  # ~12 mins (Trains 7 variants)
 python -I -X utf8 experiment_5g_adaptation/src/A2_few_shot.py .      # ~50 mins (8 sample sizes x 5 seeds)
 python -I -X utf8 experiment_5g_adaptation/src/A3_loao.py .          # ~20 mins (8 LOAO classes x 2 variants)
 ```
 *Note:* Prefix `QUICK=1` for rapid validation with 40 trees. Every script takes the project root directory as its first argument and writes strictly to its own module subdirectories.
 
-### Step 4: Build Complete English Capstone Report
-```bash
-python bao_cao_BTL/build_full_report_en.py
-```
-This script compiles all theoretical foundations, data audits, experimental tables, and discussion chapters into `bao_cao_BTL/Report_5G_IDS_Capstone.docx` and `bao_cao_BTL/Bao_cao_BTL_English.docx`.
+### Step 4: Capstone Deliverables
+The complete graduation capstone reports are compiled under `bao_cao_BTL/`:
+- `bao_cao_BTL/Khung_bao_cao_BTL.docx`: Graduation capstone project report formatted in academic English.
+- `bao_cao_BTL/Report_5G_IDS_Capstone.docx`: Full academic capstone deliverable report.
 
 ---
 
@@ -163,4 +162,4 @@ This script compiles all theoretical foundations, data audits, experimental tabl
   - [`experiment_5g_adaptation/reports/Report_A3.md`](experiment_5g_adaptation/reports/Report_A3.md): Resilience against novel, unseen 5G zero-day attacks (A3).
 - **Capstone Graduation Report**:
   - [`bao_cao_BTL/Report_5G_IDS_Capstone.docx`](bao_cao_BTL/Report_5G_IDS_Capstone.docx): Full final capstone report formatted in Microsoft Word (.docx).
-  - [`bao_cao_BTL/Presentation_Slides_Outline.md`](bao_cao_BTL/Presentation_Slides_Outline.md): Complete slide-by-slide thesis defense outline.
+  - [`reports/Presentation_Slides_Outline.md`](reports/Presentation_Slides_Outline.md): Complete slide-by-slide thesis defense outline.

@@ -99,45 +99,45 @@
   },
   "prevalence_gap": {
     "V1_nodedup": {
-      "train thô": 0.680622,
-      "test thô": 0.5506,
-      "lệch thô": 0.130022,
-      "train sạch": 0.680732,
-      "test sạch": 0.556041,
-      "lệch sạch": 0.124691
+      "train_raw": 0.680622,
+      "test_raw": 0.5506,
+      "gap_raw": 0.130022,
+      "train_clean": 0.680732,
+      "test_clean": 0.556041,
+      "gap_clean": 0.124691
     },
     "V2_nodedup_nocontra": {
-      "train thô": 0.680622,
-      "test thô": 0.5506,
-      "lệch thô": 0.130022,
-      "train sạch": 0.680622,
-      "test sạch": 0.5506,
-      "lệch sạch": 0.130022
+      "train_raw": 0.680622,
+      "test_raw": 0.5506,
+      "gap_raw": 0.130022,
+      "train_clean": 0.680622,
+      "test_clean": 0.5506,
+      "gap_clean": 0.130022
     },
     "V0_official_recipe": {
-      "train thô": 0.680622,
-      "test thô": 0.5506,
-      "lệch thô": 0.130022,
-      "train sạch": 0.496381,
-      "test sạch": 0.366504,
-      "lệch sạch": 0.129878
+      "train_raw": 0.680622,
+      "test_raw": 0.5506,
+      "gap_raw": 0.130022,
+      "train_clean": 0.496381,
+      "test_clean": 0.366504,
+      "gap_clean": 0.129878
     }
   },
   "cross_set_duplicates": {
     "V1_nodedup": {
-      "dòng test": 80816,
-      "trùng với train": 20960,
-      "tỷ lệ": 0.25935458325084143
+      "test_rows": 80816,
+      "overlap_with_train": 20960,
+      "rate": 0.25935458325084143
     },
     "V2_nodedup_nocontra": {
-      "dòng test": 82332,
-      "trùng với train": 23536,
-      "tỷ lệ": 0.28586697760287616
+      "test_rows": 82332,
+      "overlap_with_train": 23536,
+      "rate": 0.28586697760287616
     },
     "V0_official_recipe": {
-      "dòng test": 50567,
-      "trùng với train": 1993,
-      "tỷ lệ": 0.039413055945577154
+      "test_rows": 50567,
+      "overlap_with_train": 1993,
+      "rate": 0.039413055945577154
     }
   }
 }
