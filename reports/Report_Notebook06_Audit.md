@@ -3,7 +3,7 @@
 **Project:** 5G Intrusion Detection System / UNSW-NB15 Benchmark · Binary Classification  
 **Target of Review:** `notebooks/06_Root_Cause_Audit.ipynb` (34 cells, executed October 3, 2026) and `reports/Report_Accuracy_Root_Cause.md`  
 **Review Date:** October 8, 2026  
-**Methodology:** Line-by-line code review, mathematical re-computation of reported metrics from `reports/audit06/ket_qua_audit06.json`, cross-verification against historical checkpoints (`models/*_metrics.json`, `reports/exp05/*.json`, and deduplication ablation reports).
+**Methodology:** Line-by-line code review, mathematical re-computation of reported metrics from `reports/audit06/results_audit06.json`, cross-verification against historical checkpoints (`models/*_metrics.json`, `reports/exp05/*.json`, and deduplication ablation reports).
 
 ---
 

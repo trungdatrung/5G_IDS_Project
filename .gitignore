@@ -39,3 +39,7 @@ venv/
 
 # ---- Office temp files ----
 ~$*
+
+# ---- Thư mục báo cáo chỉ chứa tài liệu, không chứa script ----
+/bao_cao_BTL/**/*.py
+/bao_cao_BTL/**/__pycache__/

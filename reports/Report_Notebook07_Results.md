@@ -4,7 +4,7 @@
 **Notebook:** `notebooks/07_Consolidated_Rerun.ipynb` — 39 cells executed with 0 errors  
 **Execution Date:** October 8, 2026 · Random Forest (300 estimators, random seed 42)  
 **Computational Environment:** Python 3.11.16 · scikit-learn 1.9.1 · pandas 3.0.6 · numpy 2.4.6  
-**Primary Output Directory:** `reports/rerun07/` (`ket_qua_rerun07.json`, `bang_cau_hinh.csv`, `so_sanh_thuat_toan.csv`, `thang_do_2x2.csv`, `dedup_cung_tap_danh_gia.csv`, `recall_theo_loai.csv`, `confusion_truoc_sau.png`)
+**Primary Output Directory:** `reports/rerun07/` (`results_rerun07.json`, `config_table.csv`, `algorithm_comparison.csv`, `confusion_matrix_2x2.csv`, `dedup_same_eval_set.csv`, `recall_by_class.csv`, `confusion_before_after.png`)
 
 ---
 

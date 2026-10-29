@@ -88,7 +88,7 @@ experiment_5gnidd/data/raw/BTS_1.zip                        # Mandatory (delinea
 data/5gnidd/raw/{BTS1_BTS2_fields_preserved,BTS_1,BTS_2,Combined}.zip
 ```
 
-The script `experiment_5gnidd/src/01_lam_sach_5gnidd.py` automatically unpacks and decontaminates the telemetry, generating `experiment_5gnidd/data/cleaned/5gnidd_unsw31.parquet`.
+The script `experiment_5gnidd/src/01_clean_5gnidd.py` automatically unpacks and decontaminates the telemetry, generating `experiment_5gnidd/data/cleaned/5gnidd_unsw31.parquet`.
 
 ---
 

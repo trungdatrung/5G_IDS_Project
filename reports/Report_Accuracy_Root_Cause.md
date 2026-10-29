@@ -3,7 +3,7 @@
 **Project:** 5G Intrusion Detection System / UNSW-NB15 Benchmark · Binary Classification (`label`: 0 = Normal, 1 = Attack)  
 **Execution Date:** October 3, 2026  
 **Notebook:** `notebooks/06_Root_Cause_Audit.ipynb`  
-**Underlying Artifacts:** `reports/audit06/` (`thang_do_2x2x2.csv`, `cac_huong_khac_phuc.csv`, `so_sanh_thuat_toan.csv`, `ket_qua_audit06.json`, `confusion_truoc_sau.png`)
+**Underlying Artifacts:** `reports/audit06/` (`confusion_matrix_2x2x2.csv`, `remediation_options.csv`, `algorithm_comparison.csv`, `results_audit06.json`, `confusion_before_after.png`)
 
 ---
 
